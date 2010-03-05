@@ -1,0 +1,1 @@
+../textoidl/showtex.pro
