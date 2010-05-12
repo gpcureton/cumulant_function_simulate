@@ -1,6 +1,6 @@
-import sys
+import sys, time, string, getopt, copy
 import numpy as np
-from numpy import pi, tan
+from numpy import pi, tan, sqrt
 from numpy import float64 as double
 
 import matplotlib as mpl
@@ -10,15 +10,19 @@ from elevPowerSpectrum import phillips_elev_spectrum
 
 # Initialise the scale structure
 class ScaleStruct :
-    def __init__(self, N, delta_x, x_max, k_max, delta_k) :
+    def __init__(self, N, delta_x) :
         self.N = N
         self.delta_x = delta_x
-        self.x_max = x_max
-        self.k_max = k_max
-        self.delta_k = delta_k
+        self.x_max = double(N-1)*delta_x
+        self.x = np.arange(N)*delta_x
+
+        self.k_max = 2.*pi/delta_x
+        self.delta_k = self.k_max/double(N-1)
+        self.k_N = double(N/2)*self.delta_k # Nyquist "wavenumber"
+        self.k = np.arange(N)*self.delta_k
 
 class GeomStruct :
-    def __init__(self, N_angles) :
+    def __init__(self, N_angles, angleLo, angleHi) :
         self.N_angles = N_angles
         self.source_angle = np.arange(N_angles)
         self.detector_angle = np.arange(N_angles)
@@ -26,15 +30,36 @@ class GeomStruct :
         self.xi_0 = np.arange(N_angles)
         self.xi_max = np.arange(N_angles)
 
+        self.angleRange=(angleHi-angleLo)
+
+        if ((N_angles-1) == 0) :
+            self.d_angle = 0
+        else :
+            self.d_angle = self.angleRange/(N_angles-1)
+
+        self.start_angle = angleLo
+        d2r = pi/180.
+        r2d = 180./pi
+        beta = 0.68*d2r
+
+        #Geom.N_angles = N_angles
+        self.source_angle = ((self.start_angle + np.arange(N_angles,dtype=double)*self.d_angle))*d2r
+        self.detector_angle = 0.0*d2r
+        gamma = (self.source_angle - self.detector_angle)/2.
+        self.xi_0 = tan(gamma)
+        self.xi_min = self.xi_0 - (1.0 + self.xi_0**2.)*(beta/4.)
+        self.xi_max = self.xi_0 + (1.0 + self.xi_0**2.)*(beta/4.)
+        self.dxi = self.xi_max - self.xi_min
+
 class PowerStruct :
-    def __init__(self) :
+    def __init__(self,N,spectrumType) :
         self.spectrumType = spectrumType
         self.primaryPower = np.zeros(N,double)
         self.nlPower = np.zeros(N,double)
         self.totalPower = np.zeros(N,double)
 
 class NLCouplingStruct :
-    def __init__(self) :
+    def __init__(self,N) :
         self.Nbound = 0
         self.bound = np.zeros(N, np.long)
         self.free1 = np.zeros(N, np.long)
@@ -47,180 +72,177 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
     Scale class 
     """
 
-    x_max = double(N-1)*delta_x # meters
-    x = np.arange(N)*delta_x
-    k_max = 2.*pi/delta_x
-    delta_k = k_max/double(N-1)
-    k_N = double(N/2)*delta_k # Nyquist "wavenumber"
-    k = np.arange(N)*delta_k
+    Scale = ScaleStruct(N, delta_x)
 
+    print 'Scale.N       = %15d' % (Scale.N)
+    print 'Scale.delta_x = %15.6f meters' % (Scale.delta_x)
+    print 'Scale.x_max   = %15.6f meters' % (Scale.x_max)
+    print 'Scale.k_max   = %15.6f meters^{-1}' % (Scale.k_max)
+    print 'Scale.delta_k = %15.6f meters^{-1}' % (Scale.delta_k)
+    print 'Scale.k_N     = %15.6f meters^{-1}' % (Scale.k_N)
 
-
-    print 'N = ',N
-    print 'delta_x = ',delta_x,' meters'
-    print 'x_max = ',x_max,' meters'
-    print 'k_max = ',k_max,' meters^{-1}'
-    print 'delta_k = ',delta_k,' meters^{-1}'
-    print 'Nyquist Wavenumber = ',k_N,' meters^{-1}'
-
-    # Initialise the scale structure
-    Scale = ScaleStruct(N, delta_x, x_max, k_max, delta_k)
+    # Make local copies of Scale attributes
+    x_max   = Scale.x_max
+    x       = Scale.x
+    k_max   = Scale.k_max
+    delta_k = Scale.delta_k
+    k_N     = Scale.k_N
+    k       = Scale.k
 
     """
        Populate the GEOM structure with angular quantities
     """
 
     N_angles = 5L
-
-    Geom = GeomStruct(N_angles)
-
     angleLo=10.
     angleHi=30.
-    angleRange=(angleHi-angleLo)
-
-    if ((N_angles-1) == 0) :
-        d_angle = 0
-    else :
-        d_angle = angleRange/(N_angles-1)
-
-    start_angle = angleLo
-    d2r = pi/180.
-    r2d = 180./pi
-    beta = 0.68*d2r
-
-    Geom.N_angles = N_angles
-    Geom.source_angle = ((start_angle + np.arange(N_angles,dtype=double)*d_angle))*d2r
-    Geom.detector_angle = 0.0*d2r
-    gamma = (Geom.source_angle - Geom.detector_angle)/2.
-    Geom.xi_0 = tan(gamma)
-    Geom.xi_min = Geom.xi_0 - (1.0 + Geom.xi_0**2.)*(beta/4.)
-    Geom.xi_max = Geom.xi_0 + (1.0 + Geom.xi_0**2.)*(beta/4.)
-    dxi = Geom.xi_max - Geom.xi_min
+    Geom = GeomStruct(N_angles,angleLo,angleHi)
 
     angleRuns = np.zeros(Geom.N_angles,np.long)
     angleRunsCum = np.zeros(Geom.N_angles,np.long)
 
     """
-        Populate the elevation power spectrum structure Power, 
+        Populate the elevation power spectrum structures ElevPower, 
         and NLCoupling                                          
     """
 
-    Power = PowerStruct()
+    ElevPower = PowerStruct(N,spectrumType)
 
-    NLCoupling = NLCouplingStruct()
+    NLCoupling = NLCouplingStruct(N)
 
-    phillips_elev_spectrum(Scale,Power,NLCoupling,specExp)
+    phillips_elev_spectrum(Scale,ElevPower,NLCoupling,specExp)
 
-    pl.plot(k,Power.primaryPower)
-    pl.plot(k,Power.nlPower)
-    pl.plot(k,Power.totalPower)
-    pl.plot(k,Power.primaryPower + Power.nlPower)
+    pl.figure()
+    pl.plot(Scale.k,ElevPower.primaryPower,label="primary")
+    pl.plot(Scale.k,ElevPower.nlPower,label="nonLinear")
+    pl.plot(Scale.k,ElevPower.totalPower,label="total")
+    pl.xlim(0.,3.)
+    pl.ylim(-0.0005,0.005)
+    pl.legend()
+    pl.title("Elevation Power Spectrum")
     pl.show()
 
-    #CASE POWER.spectrumType OF
-    #'gaussian': BEGIN
-            #PRINT, 'The spectrum is gaussian'
-            #gaussian_elev_spectrum,SCALE,POWER,NLCOUPLING
-        #END
-    #'phillips': BEGIN
-            #PRINT, 'The spectrum is phillips'
-            #phillips_elev_spectrum,SCALE,POWER,NLCOUPLING,specExp
-        #END
-    #ENDCASE
+    print '\nFirst component indicies for free waves ...'
+    print NLCoupling.free1
+    print Scale.k[NLCoupling.free1]/Scale.k_N
+
+    print 'Second component indicies for free waves ...'
+    print NLCoupling.free2
+    print Scale.k[NLCoupling.free2]/Scale.k_N
+
+    print 'Indicies for bound waves...'
+    print NLCoupling.bound
+    print Scale.k[NLCoupling.bound]/Scale.k_N
+
+    totalElevPower = ElevPower.totalPower
+    primaryElevPower = ElevPower.primaryPower
+    nlElevPower = ElevPower.nlPower
+
+    print "\nElevation stdev from power vector: %f10.6 meters " % \
+        (sqrt(np.sum(totalElevPower)*delta_k))
+    print "Elevation variance from power vector: %f10.6 meters^{2} " % \
+        (np.sum(totalElevPower)*delta_k)
+
+    print "\nTotal elevation power at the bound wavenumbers..."
+    print totalElevPower[NLCoupling.bound]
+    print "Free elevation power at the bound wavenumbers..."
+    print ElevPower.primaryPower[NLCoupling.bound]
+    print "Bound elevation power at the bound wavenumbers..."
+    print ElevPower.nlPower[NLCoupling.bound]
+    print "Ratio of bound to free elevation power at the bound wavenumbers..."
+    print ElevPower.nlPower[NLCoupling.bound]/totalElevPower[NLCoupling.bound]
+
+    """
+        Initialise the slope power spectrum structure
+    """
+    SlopePower = copy.deepcopy(ElevPower)
+    SlopePower.primaryPower = k*k*ElevPower.primaryPower
+    SlopePower.nlPower = k*k*ElevPower.nlPower
+    SlopePower.totalPower = k*k*ElevPower.totalPower
+
+    pl.figure()
+    pl.plot(Scale.k,SlopePower.primaryPower,label="primary")
+    pl.plot(Scale.k,SlopePower.nlPower,label="nonLinear")
+    pl.plot(Scale.k,SlopePower.totalPower,label="total")
+    pl.xlim(0.,3.)
+    pl.ylim(-0.0005,0.005)
+    pl.legend()
+    pl.title("Slope Power Spectrum")
+    pl.show()
+
+    totalSlopePower = SlopePower.totalPower
+    primarySlopePower = SlopePower.primaryPower
+    nlSlopePower = SlopePower.nlPower
+
+    print "\nSlope stdev from power vector: %10.6f meters " % \
+        (sqrt(np.sum(totalSlopePower)*delta_k))
+    print "Slope variance from power vector: %10.6f meters^{2} " % \
+        (np.sum(totalSlopePower)*delta_k)
+
+    print "\nTotal slope power at the bound wavenumbers..."
+    print totalSlopePower[NLCoupling.bound]
+    print "Free slope power at the bound wavenumbers..."
+    print SlopePower.primaryPower[NLCoupling.bound]
+    print "Bound slope power at the bound wavenumbers..."
+    print SlopePower.nlPower[NLCoupling.bound]
+    print "Ratio of bound to free slope power at the bound wavenumbers..."
+    print SlopePower.nlPower[NLCoupling.bound]/totalSlopePower[NLCoupling.bound]
+
+    """
+        Compute the total elevation amplitude, phase and spectrum,
+        and the second moment function 
+    """
+
+    totalElevAmplitude = np.zeros(N,dtype=double)
+    totalElevAmplitude = sqrt(0.5*totalElevPower*delta_k)
+    totalElevAmplitude[N/2+1 :] = totalElevAmplitude[1L : N/2][::-1]
+    totalElevSpectrum = np.zeros(N,dtype=np.complex64)
+
+    primaryElevAmplitude = np.zeros(N,dtype=double)
+    primaryElevAmplitude = sqrt(0.5*primaryElevPower*delta_k)
+    primaryElevAmplitude[N/2+1 :] = primaryElevAmplitude[1L : N/2][::-1]
+
+    nlElevAmplitude = np.zeros(N,dtype=double)
+    nlElevAmplitude = sqrt(0.5*nlElevPower*delta_k)
+    nlElevAmplitude[N/2+1 :] = nlElevAmplitude[1L : N/2][::-1]
+
+    print "\nElevation stdev from amplitude vector: %10.6f meters " % (sqrt(np.sum(totalElevAmplitude**2.)))
+    print "Elevation variance from amplitude vector: %10.6f meters^{2}" % (np.sum(totalElevAmplitude**2.))
+
+    totalElevAvgPower = np.zeros(N,dtype=double)
+    primaryElevAvgPower = np.zeros(N,dtype=double)
+    nlElevAvgPower = np.zeros(N,dtype=double)
+
+    """
+        Compute the total slope amplitude, phase and spectrum
+    """
+
+    totalSlopeAmplitude = np.zeros(N,dtype=double)
+    totalSlopeAmplitude = sqrt(0.5*totalSlopePower*delta_k)
+    totalSlopeAmplitude[N/2+1 :] = totalSlopeAmplitude[1L : N/2][::-1]
+    totalSlopeSpectrum = np.zeros(N,dtype=np.complex64)
+    totalSlopeSurface = np.zeros(N,dtype=np.complex64)
+
+    primarySlopeAmplitude = np.zeros(N,dtype=double)
+    primarySlopeAmplitude = sqrt(0.5*primarySlopePower*delta_k)
+    primarySlopeAmplitude[N/2+1 :] = primarySlopeAmplitude[1L : N/2][::-1]
+    primarySlopeSpectrum = np.zeros(N,dtype=np.complex64)
+    primarySlopeSurface = np.zeros(N,dtype=np.complex64)
+
+    nlSlopeAmplitude = np.zeros(N,dtype=double)
+    nlSlopeAmplitude = sqrt(0.5*nlSlopePower*delta_k)
+    nlSlopeAmplitude[N/2+1 :] = nlSlopeAmplitude[1L : N/2][::-1]
+    nlSlopeSpectrum = np.zeros(N,dtype=np.complex64)
+    nlSlopeSurface = np.zeros(N,dtype=np.complex64)
+
+    print "\nSlope stdev from amplitude vector: %10.6f meters " % (sqrt(np.sum(totalSlopeAmplitude**2.)))
+    print "Slope variance from amplitude vector: %10.6f meters^{2}" % (np.sum(totalSlopeAmplitude**2.))
+
+    totalSlopeAvgPower = np.zeros(N,dtype=double)
+    primarySlopeAvgPower = np.zeros(N,dtype=double)
+    nlSlopeAvgPower = np.zeros(N,dtype=double)
 
 """
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	;;; Check some of the data from the POWER structure      	 ;;;
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-	PRINT,"First component indicies for free waves ...",FORMAT='(/A)'
-	PRINT,NLCOUPLING.free1
-	PRINT,k[NLCOUPLING.free1]/k_N
-	
-	PRINT,"Second component indicies for free waves ...",FORMAT='(/A)'
-	PRINT,NLCOUPLING.free2
-	PRINT,k[NLCOUPLING.free2]/k_N
-	
-	PRINT,"Indicies for bound waves...",FORMAT='(/A)'
-	PRINT,NLCOUPLING.bound
-
-	totalElevPower = POWER.primaryPower + POWER.nlPower
-	PRINT,"Elevation stdev from power vector:    ",SQRT(TOTAL(totalElevPower)*delta_k)," meters",FORMAT='(/A,F10.6,A)'
-	PRINT,"Elevation variance from power vector: ",TOTAL(totalElevPower)*delta_k," meters^{2}",FORMAT='(A,F10.6,A)'
-
-	totalSlopePower = DBLARR(N)
-	totalSlopePower = k*k*totalElevPower
-	primarySlopePower = DBLARR(N)
-	primarySlopePower = k*k*POWER.primaryPower
-	nlSlopePower = DBLARR(N)
-	nlSlopePower = k*k*POWER.nlPower
-
-	PRINT,"Slope stdev from power vector: ",SQRT(TOTAL(totalSlopePower)*delta_k),FORMAT='(A,F10.6)'
-	PRINT,"Slope variance from power vector: ",TOTAL(totalSlopePower)*delta_k,FORMAT='(A,F10.6/)'
-
-	PRINT,"Total elevation power at the bound wavenumbers...",FORMAT='(/A)'
-	PRINT,totalElevPower[NLCOUPLING.bound]
-	PRINT,"Free elevation power at the bound wavenumbers..."
-	PRINT,POWER.primaryPower[NLCOUPLING.bound]
-	PRINT,"Bound elevation power at the bound wavenumbers..."
-	PRINT,POWER.nlPower[NLCOUPLING.bound]
-	PRINT,"Ratio of bound to free elevation power at the bound wavenumbers..."
-	PRINT,POWER.nlPower[NLCOUPLING.bound]/totalElevPower[NLCOUPLING.bound]
-
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	;;; Compute the total elevation amplitude, phase and spectrum, ;;;
-	;;; and the second moment function                             ;;;
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-	totalElevAmplitude = DBLARR(N)
-	totalElevAmplitude = SQRT(0.5D*totalElevPower*delta_k)
-	totalElevAmplitude[N/2L+1L:N-1L] = REVERSE(totalElevAmplitude[1L:N/2L-1L])
-	totalElevSpectrum = DCOMPLEXARR(N)
-
-	primaryElevAmplitude = DBLARR(N)
-	primaryElevAmplitude = SQRT(0.5D*POWER.primaryPower*delta_k)
-	primaryElevAmplitude[N/2L+1L:N-1L] = REVERSE(primaryElevAmplitude[1L:N/2L-1L])
-
-	nlElevAmplitude = DBLARR(N)
-	nlElevAmplitude = SQRT(0.5D*POWER.nlPower*delta_k)
-	nlElevAmplitude[N/2L+1L:N-1L] = REVERSE(nlElevAmplitude[1L:N/2L-1L])
-
-	PRINT,"Elevation stdev from amplitude vector:    ",SQRT(TOTAL(totalElevAmplitude^2.D)),FORMAT='(/A,F10.6)'
-	PRINT,"Elevation variance from amplitude vector: ",TOTAL(totalElevAmplitude^2.D),FORMAT='(A,F10.6/)'
-
-	totalElevAvgPower = DBLARR(N)
-	primaryElevAvgPower = DBLARR(N)
-	nlElevAvgPower = DBLARR(N)
-
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	;;; Compute the total slope amplitude, phase and spectrum     ;;;
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-	totalSlopeAmplitude = DBLARR(N)
-	totalSlopeAmplitude = SQRT(0.5D*totalSlopePower*delta_k)
-	totalSlopeAmplitude[N/2L+1L:N-1L] = REVERSE(totalSlopeAmplitude[1L:N/2L-1L])
-	totalSlopeSpectrum = DCOMPLEXARR(N)
-	totalSlopeSurface = DCOMPLEXARR(N)
-
-	primarySlopeAmplitude = DBLARR(N)
-	primarySlopeAmplitude = SQRT(0.5D*primarySlopePower*delta_k)
-	primarySlopeAmplitude[N/2L+1L:N-1L] = REVERSE(primarySlopeAmplitude[1L:N/2L-1L])
-	primarySlopeSpectrum = DCOMPLEXARR(N)
-	primarySlopeSurface = DCOMPLEXARR(N)
-
-	nlSlopeAmplitude = DBLARR(N)
-	nlSlopeAmplitude = SQRT(0.5D*nlSlopePower*delta_k)
-	nlSlopeAmplitude[N/2L+1L:N-1L] = REVERSE(nlSlopeAmplitude[1L:N/2L-1L])
-	nlSlopeSpectrum = DCOMPLEXARR(N)
-	nlSlopeSurface = DCOMPLEXARR(N)
-
-	PRINT,"Slope stdev from amplitude vector: ",SQRT(TOTAL(totalSlopeAmplitude^2.D)),FORMAT='(A,F10.6)'
-	PRINT,"Slope variance from amplitude vector: ",TOTAL(totalSlopeAmplitude^2.D),FORMAT='(A,F10.6/)'
-
-	totalSlopeAvgPower = DBLARR(N)
-	primarySlopeAvgPower = DBLARR(N)
-	nlSlopeAvgPower = DBLARR(N)
-
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	;;;     Define the glint, glint spectrum and glint power      ;;;
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
