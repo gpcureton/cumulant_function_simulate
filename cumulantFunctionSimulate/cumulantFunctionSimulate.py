@@ -42,7 +42,6 @@ class GeomStruct :
         r2d = 180./pi
         beta = 0.68*d2r
 
-        #Geom.N_angles = N_angles
         self.source_angle = ((self.start_angle + np.arange(N_angles,dtype=double)*self.d_angle))*d2r
         self.detector_angle = 0.0*d2r
         gamma = (self.source_angle - self.detector_angle)/2.
@@ -64,6 +63,14 @@ class NLCouplingStruct :
         self.bound = np.zeros(N, np.long)
         self.free1 = np.zeros(N, np.long)
         self.free2 = np.zeros(N, np.long)
+
+class DataStatsStruct :
+    def __init__(self,numMoments) :
+        self.mean = 0.
+        self.variance = 0.
+        self.skewness = 0.
+        self.moments = np.zeros(numMoments, double)
+        self.cumulants = np.zeros(numMoments, double)
 
 def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 
@@ -97,9 +104,6 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
     angleLo=10.
     angleHi=30.
     Geom = GeomStruct(N_angles,angleLo,angleHi)
-
-    angleRuns = np.zeros(Geom.N_angles,np.long)
-    angleRunsCum = np.zeros(Geom.N_angles,np.long)
 
     """
         Populate the elevation power spectrum structures ElevPower, 
@@ -206,8 +210,10 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
     nlElevAmplitude = sqrt(0.5*nlElevPower*delta_k)
     nlElevAmplitude[N/2+1 :] = nlElevAmplitude[1L : N/2][::-1]
 
-    print "\nElevation stdev from amplitude vector: %10.6f meters " % (sqrt(np.sum(totalElevAmplitude**2.)))
-    print "Elevation variance from amplitude vector: %10.6f meters^{2}" % (np.sum(totalElevAmplitude**2.))
+    print "\nElevation stdev from amplitude vector: %10.6f meters " % \
+            (sqrt(np.sum(totalElevAmplitude**2.)))
+    print "Elevation variance from amplitude vector: %10.6f meters^{2}" % \
+            (np.sum(totalElevAmplitude**2.))
 
     totalElevAvgPower = np.zeros(N,dtype=double)
     primaryElevAvgPower = np.zeros(N,dtype=double)
@@ -235,99 +241,53 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
     nlSlopeSpectrum = np.zeros(N,dtype=np.complex64)
     nlSlopeSurface = np.zeros(N,dtype=np.complex64)
 
-    print "\nSlope stdev from amplitude vector: %10.6f meters " % (sqrt(np.sum(totalSlopeAmplitude**2.)))
-    print "Slope variance from amplitude vector: %10.6f meters^{2}" % (np.sum(totalSlopeAmplitude**2.))
+    print "\nSlope stdev from amplitude vector: %10.6f meters " % \
+            (sqrt(np.sum(totalSlopeAmplitude**2.)))
+    print "Slope variance from amplitude vector: %10.6f meters^{2}" % \
+            (np.sum(totalSlopeAmplitude**2.))
 
     totalSlopeAvgPower = np.zeros(N,dtype=double)
     primarySlopeAvgPower = np.zeros(N,dtype=double)
     nlSlopeAvgPower = np.zeros(N,dtype=double)
 
+    """
+	    Define the glint, glint spectrum and glint power
+    """
+
+    glint = np.zeros(N,dtype=double)
+    glintSpectrum = np.zeros(N,dtype=np.complex64)
+    totalGlintAvgPower = np.zeros((N,Geom.N_angles),dtype=double) # DBLARR(N,GEOM.N_angles)
+
+    """
+	    Define the various point estimators for the elevation,
+	    slope and glint
+    """
+
+    numMoments = 3
+
+    elevStats = DataStatsStruct(numMoments)
+    slopeStats = DataStatsStruct(numMoments)
+    glintStats = [DataStatsStruct(numMoments) for geoms in np.arange(Geom.N_angles) ]
+    for geoms in np.arange(Geom.N_angles) :
+        print "glintStats[%1d].mean = %f" % (geoms,glintStats[geoms].mean)
+        print "glintStats[%1d].variance = %f" % (geoms,glintStats[geoms].variance)
+        print "glintStats[%1d].skewness = %f" % (geoms,glintStats[geoms].skewness)
+
+    #elevMoments       = DBLARR(numMoments)
+    #slopeMoments      = DBLARR(numMoments)
+    #glintFirstMoments = DBLARR(GEOM.N_angles)
+	
+    """
+        Loop through the surface realisations for the quadratically
+        coupled oscillations
+    """
+
+    seed = 30
+    N_r_cum = 0
+    angleRuns = np.zeros(Geom.N_angles,np.long)
+    angleRunsCum = np.zeros(Geom.N_angles,np.long)
+
 """
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	;;;     Define the glint, glint spectrum and glint power      ;;;
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-	glint = DBLARR(N)
-	glintSpectrum = DCOMPLEXARR(N)
-	totalGlintAvgPower = DBLARR(N,GEOM.N_angles)
-
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	;;; Define the various point estimators for the elevation,    ;;;
-	;;; slope and glint                                           ;;;
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-	numMoments = 3L
-
-	elevMoments       = DBLARR(numMoments)
-	slopeMoments      = DBLARR(numMoments)
-	glintFirstMoments = DBLARR(GEOM.N_angles)
-	
-	;;; The IDL centered moments
-
-	elevMean      = 0.D
-	slopeMean     = 0.D
-	glintMean     = DBLARR(GEOM.N_angles)
-	elevVariance  = 0.D
-	slopeVariance = 0.D
-	glintVariance = DBLARR(GEOM.N_angles)
-	elevSkewness  = 0.D
-	slopeSkewness = 0.D
-	glintSkewness = DBLARR(GEOM.N_angles)
-
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	;;; Define the various quantities for the calculation of the  ;;;
-	;;; bispectrum and the component power spectra                ;;;
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-	;NN = 512L				;-- Size of the "entire" bispectrum domain
-	NN2 = LONG(FIX(NN/2L))	;-- The Nyquist number of the bispectrum domain
-	NN4 = LONG(FIX(NN/4L))
-	PRINT,"NN = ",NN,FORMAT='(/A,I8)'
-
-	;;; The bispectrum domain abcissa
-	kx = DINDGEN(NN)*delta_k
-	ky = DINDGEN(NN)*delta_k
-	
-	;;; The bicovariance domain abcissa
-	tau_x = DINDGEN(NN)*delta_x
-	tau_y = DINDGEN(NN)*delta_x
-
-	elevBispectrum =     DCOMPLEXARR(NN,NN)
-	elevComponentPower = DBLARR(NN,NN)
-	elevSumPower =       DBLARR(NN,NN)
-	elevBicoherence =    DBLARR(NN,NN)
-
-	slopeBispectrum =     DCOMPLEXARR(NN,NN)
-	slopeComponentPower = DBLARR(NN,NN)
-	slopeSumPower =       DBLARR(NN,NN)
-	slopeBicoherence =    DBLARR(NN,NN)
-
-	glintBispectrum =     DCOMPLEXARR(NN,NN,GEOM.N_angles)
-	glintComponentPower = DBLARR(NN,NN,GEOM.N_angles)
-	glintSumPower =       DBLARR(NN,NN,GEOM.N_angles)
-	glintBicoherence =    DBLARR(NN,NN,GEOM.N_angles)
-	
-	;;; The Hanning window function used to ensure that the glint power
-	;;; spectrum vanishes outside of the Nyquist wavenumbers.
-
-	hanWindow_N = DBLARR(N)
-	hanWindow_N = SHIFT(HANNING(N,ALPHA=0.5,/DOUBLE),N/2)
-
-	hanWindow_small = SHIFT(HANNING(NN,ALPHA=0.5,/DOUBLE),NN/2)
-	hanWindow = DBLARR(N)
-	hanWindow[0L:NN/2L] = hanWindow_small[0L:NN/2L]
-	hanWindow[N/2L+1L:N-1L] = REVERSE(hanWindow[1L:N/2L-1L])
-
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	;;;   Loop through the surface realisations for the quadratically   ;;;
-	;;;   coupled oscillations											;;;
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-	seed = 30L
-	N_r_cum = 0L
-	angleRuns[*] = 0L
-	angleRunsCum[*] = 0L
-
 	WHILE (TOTAL(angleRuns) LT N_r*GEOM.N_angles) DO BEGIN
 
 		N_r_cum++
