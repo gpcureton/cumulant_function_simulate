@@ -1,6 +1,7 @@
 import sys, time, string, getopt, copy
 import numpy as np
-from numpy import pi, tan, sqrt
+from numpy import pi,sin,cos,tan,sqrt,abs
+from numpy.fft import fft,ifft
 from numpy import float64 as double
 
 import matplotlib as mpl
@@ -142,9 +143,9 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
     primaryElevPower = ElevPower.primaryPower
     nlElevPower = ElevPower.nlPower
 
-    print "\nElevation stdev from power vector: %f10.6 meters " % \
+    print "\nElevation stdev from power vector: %10.6f meters " % \
         (sqrt(np.sum(totalElevPower)*delta_k))
-    print "Elevation variance from power vector: %f10.6 meters^{2} " % \
+    print "Elevation variance from power vector: %10.6f meters^{2} " % \
         (np.sum(totalElevPower)*delta_k)
 
     print "\nTotal elevation power at the bound wavenumbers..."
@@ -204,16 +205,29 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 
     primaryElevAmplitude = np.zeros(N,dtype=double)
     primaryElevAmplitude = sqrt(0.5*primaryElevPower*delta_k)
-    primaryElevAmplitude[N/2+1 :] = primaryElevAmplitude[1L : N/2][::-1]
+    primaryElevAmplitude[N/2+1 :] = primaryElevAmplitude[1 : N/2][::-1]
 
     nlElevAmplitude = np.zeros(N,dtype=double)
     nlElevAmplitude = sqrt(0.5*nlElevPower*delta_k)
-    nlElevAmplitude[N/2+1 :] = nlElevAmplitude[1L : N/2][::-1]
+    nlElevAmplitude[N/2+1 :] = nlElevAmplitude[1 : N/2][::-1]
 
     print "\nElevation stdev from amplitude vector: %10.6f meters " % \
             (sqrt(np.sum(totalElevAmplitude**2.)))
     print "Elevation variance from amplitude vector: %10.6f meters^{2}" % \
             (np.sum(totalElevAmplitude**2.))
+
+
+    testElevPhase = np.random.rand(N)*2.*pi - pi
+    totalElevSpectrum = totalElevAmplitude*(cos(testElevPhase) + 1j*sin(testElevPhase))
+    totalElevSpectrum[N/2+1 :] = np.conjugate(totalElevSpectrum[1 : N/2][::-1])
+    totalElevSurface = fft(totalElevSpectrum)
+
+    print "\nElevation mean from surface:    %10.6f meters " % \
+            np.mean(totalElevSurface.real)
+    print "Elevation stdev from surface:    %10.6f meters " % \
+            np.std(totalElevSurface.real)
+    print "Elevation variance from surface: %10.6f meters^{2} " % \
+            np.var(totalElevSurface.real)
 
     totalElevAvgPower = np.zeros(N,dtype=double)
     primaryElevAvgPower = np.zeros(N,dtype=double)
@@ -246,6 +260,18 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
     print "Slope variance from amplitude vector: %10.6f meters^{2}" % \
             (np.sum(totalSlopeAmplitude**2.))
 
+    testSlopePhase = np.random.rand(N)*2.*pi - pi
+    totalSlopeSpectrum = totalSlopeAmplitude*(-sin(testSlopePhase) + 1j*cos(testSlopePhase))
+    totalSlopeSpectrum[N/2+1 :] = np.conjugate(totalSlopeSpectrum[1L : N/2][::-1])
+    totalSlopeSurface = fft(totalSlopeSpectrum)
+
+    print "\nSlope mean from surface:    %10.6f meters " % \
+            np.mean(totalSlopeSurface.real)
+    print "Slope stdev from surface:    %10.6f meters " % \
+            np.std(totalSlopeSurface.real)
+    print "Slope variance from surface: %10.6f meters^{2} " % \
+            np.var(totalSlopeSurface.real)
+
     totalSlopeAvgPower = np.zeros(N,dtype=double)
     primarySlopeAvgPower = np.zeros(N,dtype=double)
     nlSlopeAvgPower = np.zeros(N,dtype=double)
@@ -256,7 +282,7 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 
     glint = np.zeros(N,dtype=double)
     glintSpectrum = np.zeros(N,dtype=np.complex64)
-    totalGlintAvgPower = np.zeros((N,Geom.N_angles),dtype=double) # DBLARR(N,GEOM.N_angles)
+    totalGlintAvgPower = np.zeros((Geom.N_angles,N),dtype=double) # DBLARR(N,GEOM.N_angles)
 
     """
 	    Define the various point estimators for the elevation,
@@ -268,10 +294,10 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
     elevStats = DataStatsStruct(numMoments)
     slopeStats = DataStatsStruct(numMoments)
     glintStats = [DataStatsStruct(numMoments) for geoms in np.arange(Geom.N_angles) ]
-    for geoms in np.arange(Geom.N_angles) :
-        print "glintStats[%1d].mean = %f" % (geoms,glintStats[geoms].mean)
-        print "glintStats[%1d].variance = %f" % (geoms,glintStats[geoms].variance)
-        print "glintStats[%1d].skewness = %f" % (geoms,glintStats[geoms].skewness)
+    #for geoms in np.arange(Geom.N_angles) :
+        #print "glintStats[%1d].mean = %f" % (geoms,glintStats[geoms].mean)
+        #print "glintStats[%1d].variance = %f" % (geoms,glintStats[geoms].variance)
+        #print "glintStats[%1d].skewness = %f" % (geoms,glintStats[geoms].skewness)
 
     #elevMoments       = DBLARR(numMoments)
     #slopeMoments      = DBLARR(numMoments)
@@ -287,273 +313,245 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
     angleRuns = np.zeros(Geom.N_angles,np.long)
     angleRunsCum = np.zeros(Geom.N_angles,np.long)
 
-"""
-	WHILE (TOTAL(angleRuns) LT N_r*GEOM.N_angles) DO BEGIN
+    while (N_r_cum < N_r) :
+    #while (angleRuns.sum() < N_r*Geom.N_angles) :
 
-		N_r_cum++
+        N_r_cum += 1
 
-		PRINT,">>>>>>>>>>>>>>>>>>>>>",FORMAT='(/A/)'
-		PRINT,"Computing realisation: ",N_r_cum,FORMAT='(A,I4/)'
+        print "\n>>>>>>>>>>>>>>>>>>>>>\n"
+        print "Computing realisation: %d" % (N_r_cum)
 
-		;;; Compute the independent phases for this realisation
-		primaryElevPhase = RANDOMU(seed,N)*2.D*!DPI - !DPI
-		nlElevPhase = RANDOMU(seed,N)*2.D*!DPI - !DPI
+		### Compute the independent phases for this realisation
+        primaryElevPhase = np.random.rand(N)*2.*pi - pi # RANDOMU(seed,N)*2.D*!DPI - !DPI
+        nlElevPhase      = np.random.rand(N)*2.*pi - pi # RANDOMU(seed,N)*2.D*!DPI - !DPI
 
-		;;; Apply the phase correlations between the free and bound wavenumbers for the nonlinear
-		;;; component, if (nlSwitch==1)
-		IF (nlSwitch EQ 1) THEN $
-			nlElevPhase[NLCOUPLING.bound] = primaryElevPhase[NLCOUPLING.free1] + primaryElevPhase[NLCOUPLING.free2]
+        ### Apply the phase correlations between the free and bound wavenumbers for the nonlinear
+        ### component, if (nlSwitch==1)
+        if (nlSwitch) :
+            nlElevPhase[NLCoupling.bound] = primaryElevPhase[NLCoupling.free1] + \
+                    primaryElevPhase[NLCoupling.free2]
 
-		;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-		;;;   Compute the elevation realisations from the elevation spectra ;;;
-		;;;   and the synthesisised phases                                  ;;;
-		;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        """
+		    Compute the elevation realisations from the elevation spectra
+		    and the synthesisised phases
+        """
 		
-		;;; Calculate the elevation spectrum for the free waves
-		primaryElevSpectrum = primaryElevAmplitude*DCOMPLEX(COS(primaryElevPhase),SIN(primaryElevPhase))
-;		primaryElevSpectrum += 0.00001*MAX(totalElevAmplitude)*RANDOMN(seed,N)
-		primaryElevSpectrum[N/2L+1L:N-1L] = CONJ(REVERSE(primaryElevSpectrum[1L:N/2L-1L]))
+		### Calculate the elevation spectrum for the free waves
+        primaryElevSpectrum = primaryElevAmplitude*(cos(primaryElevPhase) + 1j*sin(primaryElevPhase))
+        #primaryElevSpectrum += 0.00001*MAX(totalElevAmplitude)*RANDOMN(seed,N)
+        primaryElevSpectrum[N/2+1:] = np.conjugate(primaryElevSpectrum[1 : N/2][::-1])
 
-		;;; Calculate the elevation spectrum for the bound waves
-		nlElevSpectrum = nlElevAmplitude*DCOMPLEX(COS(nlElevPhase),SIN(nlElevPhase))
-		nlElevSpectrum[N/2L+1L:N-1L] = CONJ(REVERSE(nlElevSpectrum[1L:N/2L-1L]))
+        ### Calculate the elevation spectrum for the bound waves
+        nlElevSpectrum = nlElevAmplitude*(cos(nlElevPhase) + 1j*sin(nlElevPhase))
+        nlElevSpectrum[N/2+1:] = np.conjugate(nlElevSpectrum[1:N/2][::-1])
 
-		;;; Compute specific realisation of the free and bound waves. Nonlinear elevation
-		;;; (totalElevSurface) is sum of free and bound waves.
-		primaryElevSurface = FFT(primaryElevSpectrum,/INVERSE,/DOUBLE)		;;; Free waves
-		nlElevSurface = FFT(nlElevSpectrum,/INVERSE,/DOUBLE)				;;; Bound waves
-		totalElevSurface = primaryElevSurface + nlElevSurface				;;; Total surface
+		### Compute specific realisation of the free and bound waves. Nonlinear elevation
+		### (totalElevSurface) is sum of free and bound waves.
+        primaryElevSurface = fft(primaryElevSpectrum)                      ### Free waves
+        nlElevSurface = fft(nlElevSpectrum)                                ### Bound waves
+        totalElevSurface = primaryElevSurface + nlElevSurface              ### Total surface
+ 
+        print "\n\tElevation mean from surface:    %10.6f meters" % \
+                np.mean(totalElevSurface.real)
+        print "\tElevation stdev from surface:    %10.6f meters" % \
+                np.std(totalElevSurface.real)
+        print "\tElevation variance from surface: %10.6f meters^{2}\n" % \
+                np.var(totalElevSurface.real)
 
-		;;; Compute the average power spectrum for free, bound and total elevation waves
-		primaryElevAvgPower += ABS(FFT(primaryElevSurface,/DOUBLE))^2.D
-		nlElevAvgPower += ABS(FFT(nlElevSurface,/DOUBLE))^2.D
-		totalElevAvgPower += ABS(FFT(totalElevSurface,/DOUBLE))^2.D
+		### Compute the average power spectrum for free, bound and total elevation waves
+        primaryElevAvgPower += abs(ifft(primaryElevSurface))**2.
+        nlElevAvgPower += abs(ifft(nlElevSurface))**2.
+        totalElevAvgPower += abs(ifft(totalElevSurface))**2.
 
-		;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-		;;;   Compute the slope realisations from the slope spectra ;;;
-		;;;   and the synthesisised phases                          ;;;
-		;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        print "\tElevation stdev from power vector: %10.6f meters" % \
+            (sqrt(np.sum(abs(ifft(totalElevSurface.real))**2.)))
+        print "\tElevation variance from power vector: %10.6f meters^{2}\n" % \
+            (np.sum(abs(ifft(totalElevSurface.real))**2.))
+
+        ### Compute the elevation moments
+
+        print "\tElevation mean from elevStats.moments: ",np.sum(totalElevSurface.real)/double(N)
+        print "\tElevation variance from elevStats.moments: ",np.sum(totalElevSurface.real**2.)/double(N)
+        print "\tElevation skewness from elevStats.moments: ",np.sum(totalElevSurface.real**3.)/double(N)
+
+        elevStats.moments += [ np.sum(totalElevSurface.real    )/double(N), \
+                               np.sum(totalElevSurface.real**2.)/double(N), \
+                               np.sum(totalElevSurface.real**3.)/double(N)]
+
+        """
+		    Compute the slope realisations from the slope spectra
+		    and the synthesisised phases
+        """
 		
-		;;; Calculate the slope spectrum for the free waves
-		primarySlopeSpectrum = primarySlopeAmplitude*DCOMPLEX(-SIN(primaryElevPhase),COS(primaryElevPhase))
-	;	primarySlopeSpectrum += 0.00001*MAX(totalSlopeAmplitude)*RANDOMN(seed,N)
-		primarySlopeSpectrum[N/2L+1L:N-1L] = CONJ(REVERSE(primarySlopeSpectrum[1L:N/2L-1L]))
+        ### Calculate the slope spectrum for the free waves
+        primarySlopeSpectrum = primarySlopeAmplitude*(-sin(primaryElevPhase) + 1j*cos(primaryElevPhase))
+        #primarySlopeSpectrum += 0.00001*MAX(totalSlopeAmplitude)*RANDOMN(seed,N)
+        primarySlopeSpectrum[N/2+1:] = np.conjugate(primarySlopeSpectrum[1 : N/2][::-1])
 
-		;;; Calculate the slope spectrum for the bound waves
-		nlSlopeSpectrum = nlSlopeAmplitude*DCOMPLEX(-SIN(nlElevPhase),COS(nlElevPhase))
-		nlSlopeSpectrum[N/2L+1L:N-1L] = CONJ(REVERSE(nlSlopeSpectrum[1L:N/2L-1L]))
+        ### Calculate the slope spectrum for the bound waves
+        nlSlopeSpectrum = nlSlopeAmplitude*(-sin(nlElevPhase) + 1j*cos(nlElevPhase))
+        nlSlopeSpectrum[N/2+1:] = np.conjugate(nlSlopeSpectrum[1:N/2][::-1])
 
-		;;; Compute specific realisation of the free and bound waves. Nonlinear slope
-		;;; (totalSlopeSurface) is sum of free and bound waves.
-		primarySlopeSurface = FFT(primarySlopeSpectrum,/INVERSE,/DOUBLE)    ;;; Free waves
-		nlSlopeSurface = FFT(nlSlopeSpectrum,/INVERSE,/DOUBLE)              ;;; Bound waves
-		totalSlopeSurface = primarySlopeSurface + nlSlopeSurface            ;;; Total surface
+        ### Compute specific realisation of the free and bound waves. Nonlinear slope
+        ### (totalSlopeSurface) is sum of free and bound waves.
+        primarySlopeSurface = fft(primarySlopeSpectrum)                    ### Free waves
+        nlSlopeSurface = fft(nlSlopeSpectrum)                              ### Bound waves
+        totalSlopeSurface = primarySlopeSurface + nlSlopeSurface           ### Total surface
 
-		;;; Compute the average power spectrum for free, bound and total elevation waves
-		primarySlopeAvgPower += ABS(FFT(primarySlopeSurface,/DOUBLE))^2.D
-		nlSlopeAvgPower += ABS(FFT(nlSlopeSurface,/DOUBLE))^2.D
-		totalSlopeAvgPower += ABS(FFT(totalSlopeSurface,/DOUBLE))^2.D
+        print "\n\tSlope mean from surface:    %10.6f meters " % \
+                np.mean(totalSlopeSurface.real)
+        print "\tSlope stdev from surface:    %10.6f meters " % \
+                np.std(totalSlopeSurface.real)
+        print "\tSlope variance from surface: %10.6f meters^{2} " % \
+                np.var(totalSlopeSurface.real)
 
-		;;; Compute the elevation moments
+        ### Compute the average power spectrum for free, bound and total elevation waves
+        primarySlopeAvgPower += abs(ifft(primarySlopeSurface))**2.
+        nlSlopeAvgPower += abs(ifft(nlSlopeSurface))**2.
+        totalSlopeAvgPower += abs(ifft(totalSlopeSurface))**2.
 
-		elevMoments += [	TOTAL(DOUBLE(totalElevSurface))/DOUBLE(N), $
-							TOTAL(DOUBLE(totalElevSurface)^2.D)/DOUBLE(N), $ 
-							TOTAL(DOUBLE(totalElevSurface)^3.D)/DOUBLE(N) ]
+        print "\n\tSlope stdev from power vector: %10.6f meters" % \
+            (sqrt(np.sum(abs(ifft(totalSlopeSurface.real))**2.)))
+        print "\tSlope variance from power vector: %10.6f meters^{2}\n" % \
+            (np.sum(abs(ifft(totalSlopeSurface.real))**2.))
 
-		elevMean += MEAN(DOUBLE(totalElevSurface),/DOUBLE)
-		elevVariance += VARIANCE(DOUBLE(totalElevSurface),/DOUBLE)
-		elevSkewness += SKEWNESS(DOUBLE(totalElevSurface),/DOUBLE)
+        ### Compute the slope moments
 
-		;;; Compute the slope moments
+        slopeStats.moments += [ np.sum(totalSlopeSurface    )/double(N), \
+                                np.sum(totalSlopeSurface**2.)/double(N), \
+                                np.sum(totalSlopeSurface**3.)/double(N) ]
 
-		slopeMoments += [	TOTAL(DOUBLE(totalSlopeSurface))/DOUBLE(N), $
-							TOTAL(DOUBLE(totalSlopeSurface)^2.D)/DOUBLE(N), $ 
-							TOTAL(DOUBLE(totalSlopeSurface)^3.D)/DOUBLE(N) ]
+        #slopeMoments += [	TOTAL(DOUBLE(totalSlopeSurface))/DOUBLE(N), $
+                            #TOTAL(DOUBLE(totalSlopeSurface)^2.D)/DOUBLE(N), $ 
+                            #TOTAL(DOUBLE(totalSlopeSurface)^3.D)/DOUBLE(N) ]
 
-		slopeMean += MEAN(DOUBLE(totalSlopeSurface),/DOUBLE)
-		slopeVariance += VARIANCE(DOUBLE(totalSlopeSurface),/DOUBLE)
-		slopeSkewness += SKEWNESS(DOUBLE(totalSlopeSurface),/DOUBLE)
+		#slopeMean += MEAN(DOUBLE(totalSlopeSurface),/DOUBLE)
+		#slopeVariance += VARIANCE(DOUBLE(totalSlopeSurface),/DOUBLE)
+		#slopeSkewness += SKEWNESS(DOUBLE(totalSlopeSurface),/DOUBLE)
 
-		;;; Compute the Fourier spectra of the total surfaces
-		totalElevSpectrum = FFT(totalElevSurface,/DOUBLE)
-		totalSlopeSpectrum = FFT(totalSlopeSurface,/DOUBLE)
+		### Compute the Fourier spectra of the total surfaces
+        totalElevSpectrum = ifft(totalElevSurface)
+        totalSlopeSpectrum = ifft(totalSlopeSurface)
 
-		;;; Calculate the average bispectra (for the reduced domain)
-		FOR j=0L,NN4 DO BEGIN
-			FOR i=j,NN2-j DO BEGIN
-				elevBispectrum[i,j] += totalElevSpectrum[i]*totalElevSpectrum[j]*CONJ(totalElevSpectrum[i+j])
-				slopeBispectrum[i,j] += totalSlopeSpectrum[i]*totalSlopeSpectrum[j]*CONJ(totalSlopeSpectrum[i+j])
-			ENDFOR
-		ENDFOR
+        """
+		    Loop through the geometries in the GEOM structure
+        """
 
-		;;; Calculate the average component power spectra (for the reduced domain)
-		FOR j=0L,NN4 DO BEGIN
-			FOR i=j,NN2-j DO BEGIN
-				elevComponentPower[i,j] += (ABS(totalElevSpectrum[i]*totalElevSpectrum[j]))^2.D
-				slopeComponentPower[i,j] += (ABS(totalSlopeSpectrum[i]*totalSlopeSpectrum[j]))^2.D
-			ENDFOR
-		ENDFOR
+        #for angle in np.arange(Geom.N_angles) :
 
-		;;; Calculate the average sum power spectra (for the reduced domain)
-		FOR j=0L,NN4 DO BEGIN
-			FOR i=j,NN2-j DO BEGIN
-				elevSumPower[i,j] += (ABS(totalElevSpectrum[i+j]))^2.D
-				slopeSumPower[i,j] += (ABS(totalSlopeSpectrum[i+j]))^2.D
-			ENDFOR
-		ENDFOR
+            #"""
+            #Check if we have finished processing for this
+            #angle.
+            #"""
 
-		;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-		;;;   Loop through the geometries in the GEOM structure             ;;;
-		;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+            #if (angleRuns[angle] < N_r) :
 
-		FOR angle=0L, GEOM.N_angles-1L DO BEGIN
+                #print "Processing angle ",angle," for run ",angleRuns[angle]+1L, \
+                #" --> attempt ",angleRunsCum[angle]+1L
 
-			;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-			;;;   Check if we have finished processing for this   ;;;
-			;;;   angle.                                          ;;;
-			;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-			
-			IF (angleRuns[angle] LT N_r) THEN BEGIN
+                #"""
+                    #Compute the glint realisation from the slope
+                    #realisations
+                #"""
 
-				PRINT,"Processing angle ",angle," for run ",angleRuns[angle] +1L, $
-					" --> attempt ",angleRunsCum[angle]+1L,FORMAT='(A,I3,2(A,I7))'
+                #slopeMin = Geom.xi_min[angle]
+                #slopeMax = Geom.xi_max[angle]
 
-				;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-				;;;   Compute the glint realisation from the slope    ;;;
-				;;;   realisations                                    ;;;
-				;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                #pl.figure()
+                #pl.plot(totalSlopeSurface)
+                #pl.plot(np.ones(N)*slopeMin)
+                #pl.plot(np.ones(N)*slopeMax)
+                #pl.plot(totalSlopeSurface.real)
+                #pl.plot(totalSlopeSurface.imag)
+                #pl.show()
 
-				slopeMin = GEOM.xi_min[angle]
-				slopeMax = GEOM.xi_max[angle]
-				glint = (REAL_PART(totalSlopeSurface) GT slopeMin)*$
-					(REAL_PART(totalSlopeSurface) LT slopeMax)
-				;glint = glint - MEAN(glint)
+                #glint = np.array(((totalSlopeSurface.real > slopeMin)*(totalSlopeSurface.real < slopeMax)))
+                #print "shape(glint) = ",np.shape(glint)
+                #print "glint = ",glint
+                #pl.plot(glint)
+                #pl.show()
+                #glint = glint - MEAN(glint)
 
-				;;; Check if all glint elements vanish
-				result=WHERE(glint,NCOMPLEMENT=vanishCount)
-				
-				IF(vanishCount EQ N) THEN BEGIN
-					
-					PRINT,"Zero-glint realisation angle ",angle, $
-						" for run ",angleRuns[angle] + 1L, $
-						" --> attempt ",angleRunsCum[angle]+1L,FORMAT='(A,I3,2(A,I7))'
+                ### Check if all glint elements vanish
+                #result=where(glint,NCOMPLEMENT=vanishCount)
+                #result=np.array(np.where(glint))
+                #print "shape(result) = ",np.shape(result)
 
-					;;; There are no glints, add to attempts count
-					angleRunsCum[angle:GEOM.N_angles-1L]++
-						
-					;;; If this angle fails, then steeper angles will also,
-					;;; so break out of the angle loop and proceed to the 
-					;;; next realisation...
-					break
-					
-				ENDIF ELSE BEGIN
+                #if ((result.squeeze()).shape == (0,)) :
 
-					PRINT,"Successful realisation angle ",angle, $
-						" for run ",angleRuns[angle] + 1L, $
-						" --> attempt ",angleRunsCum[angle]+1L,FORMAT='(A,I3,2(A,I4))'
-					
-					angleRuns[angle]++
-					angleRunsCum[angle]++
+                    #print "Zero-glint realisation angle ",angle, \
+                    #" for run ",angleRuns[angle]+1, \
+                    #" --> attempt ",angleRunsCum[angle]+1
 
-					;;; Compute the glint moments
+                    ### There are no glints, add to attempts count
 
-					glintFirstMoments[angle] += TOTAL(DOUBLE(glint))/DOUBLE(N)
+                    ### If this angle fails and there are no glints, then steeper 
+                    ### angles will fail also, so break out of the angle loop and 
+                    ### proceed to the next realisation...
+                    #angleRunsCum[angle:Geom.N_angles] += 1
+                    #break
 
-					glintMean[angle]     += MEAN(DOUBLE(glint),/DOUBLE)
-					glintVariance[angle] += VARIANCE(DOUBLE(glint),/DOUBLE)
-					glintSkewness[angle] += SKEWNESS(DOUBLE(glint),/DOUBLE)
+                #else :
 
-					;;; Compute the Fourier spectrum of this glint realisation
-					glintSpectrum = FFT(glint,/DOUBLE)
+                    #print "Successful realisation angle ",angle, \
+                    #" for run ",angleRuns[angle] + 1, \
+                    #" --> attempt ",angleRunsCum[angle]+1
 
-					;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-					;;;   Compute the average glint power spectrum   ;;;
-					;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                    #angleRuns[angle] += 1
+                    #angleRunsCum[angle] += 1
 
-					;-- Windowing types are...
-					;
-					;  0 : No windowing 
-					;  1 : Windowed glint Fourier spectrum
-					;  2 : Windowed glint Amplitude
-					;  3 : Windowed glint power spectrum
-					;
-					CASE powWindType OF
-						0: BEGIN
-							totalGlintAvgPower[*,angle] += ABS(glintSpectrum)^2.D
-						END
-						1: BEGIN
-							totalGlintAvgPower[*,angle] += ABS(hanWindow_N*glintSpectrum)^2.D
-						END
-						2: BEGIN
-							totalGlintAvgPower[*,angle] += (hanWindow_N*ABS(glintSpectrum))^2.D
-						END
-						3: BEGIN
-							totalGlintAvgPower[*,angle] += hanWindow_N*(ABS(glintSpectrum)^2.D)
-						END
-					ENDCASE
+                    ### Compute the glint moments
 
-					;;; Apply the Hanning window function to the glint Fourier 
-					;;; spectrum, so that we can calculate the glint power spectrum
-					;;; and bispectrum, while minimising aliasing.
+                    #glintFirstMoments[angle] += TOTAL(DOUBLE(glint))/DOUBLE(N)
+                    #glintStats[angle].moments += [ np.sum(glint    )/double(N), \
+                                   #np.sum(glint**2.)/double(N), \
+                                   #np.sum(glint**3.)/double(N) ]
 
-					;-- Windowing types are...
-					;
-					;  0 : No windowing 
-					;  1 : Windowed glint Fourier spectrum
-					;  2 : Windowed glint Amplitude
-					;  3 : Windowed glint power spectrum
-					;
-					CASE bispWindType OF
-						0: BEGIN
-							glintSpectrum = glintSpectrum
-						END
-						1: BEGIN
-							glintSpectrum = hanWindow*glintSpectrum
-						END
-					ENDCASE
+                    #glintMean[angle]     += MEAN(DOUBLE(glint),/DOUBLE)
+                    #glintVariance[angle] += VARIANCE(DOUBLE(glint),/DOUBLE)
+                    #glintSkewness[angle] += SKEWNESS(DOUBLE(glint),/DOUBLE)
 
-					;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-					;;;   Compute the average glint bispectrum   ;;;
-					;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                    ### Compute the Fourier spectrum of this glint realisation
+                    #glintSpectrum = ifft(glint)
 
-					;;; Calculate the average bispectra (for the reduced domain)
-					FOR j=0L,NN4 DO BEGIN
-						FOR i=j,NN2-j DO BEGIN
-							glintBispectrum[i,j,angle] += glintSpectrum[i]*glintSpectrum[j]*CONJ(glintSpectrum[i+j])
-						ENDFOR
-					ENDFOR
+                    #"""
+                    #Compute the average glint power spectrum
+                    #"""
 
-					;;; Calculate the average component power spectra (for the reduced domain)
-					FOR j=0L,NN4 DO BEGIN
-						FOR i=j,NN2-j DO BEGIN
-							glintComponentPower[i,j,angle] += (ABS(glintSpectrum[i]*glintSpectrum[j]))^2.D
-						ENDFOR
-					ENDFOR
+                    #totalGlintAvgPower[angle] += abs(glintSpectrum)**2.
 
-					;;; Calculate the average sum power spactra (for the reduced domain)
-					FOR j=0L,NN4 DO BEGIN
-						FOR i=j,NN2-j DO BEGIN
-							glintSumPower[i,j,angle] += (ABS(glintSpectrum[i+j]))^2.D
-						ENDFOR
-					ENDFOR
+                ### End checking for zero-glint of this angle
 
-				ENDELSE		;-- End checking for zero-glint of this angle
+            ### End checking for completion of this angle
 
-			ENDIF		;-- End checking for completion of this angle
+        ### End angle loop
 
-		ENDFOR		;-- End angle loop
+    ### End realisation loop
 
-	ENDWHILE	;-- End realisation loop
+    pl.figure()
+    pl.plot(Scale.k,2.*totalSlopeAvgPower/(delta_k*N_r),label="primary")
+    pl.xlim(0.,3.)
+    pl.ylim(-0.0005,0.005)
+    pl.legend()
+    pl.title("Average Slope Power Spectrum")
+    pl.show()
 
-	PRINT,""
-	PRINT,"AngleRuns:    ",angleRuns," ... for total of ", $
-		FIX(TOTAL(angleRuns))," / ",N_r*GEOM.N_angles;,FORMAT='(//A,5I4,A,I4,A,I4)'
-	PRINT,"AngleRunsCum: ",angleRunsCum;,FORMAT='(A,5I4)'
+    print ""
+    print "AngleRuns:    ",angleRuns," ... for total of ", \
+        int(np.sum(angleRuns))," / ",N_r*Geom.N_angles
+    print "AngleRunsCum: ",angleRunsCum
 	
-	N_runs = N_r
-	N_r = N_r_cum
-	PRINT, "Final N_r_cum = ",N_r_cum
+    N_runs = N_r
+    N_r = N_r_cum
+    print  "Final N_r_cum = ",N_r_cum
 
+    elevStats.moments /= double(N_runs)
+    print "\nElevation mean from elevStats.moments:",elevStats.moments[0]
+    print "Elevation stdev from elevStats.moments:",sqrt(elevStats.moments[1])
+    print "Elevation variance from elevStats.moments:",elevStats.moments[1]
+    print "Elevation skewness from elevStats.moments:",elevStats.moments[2]
+
+"""
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	;;;   Compute the elevation estimators   ;;;
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -797,32 +795,32 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 	;;; The elevation and slope summary results                   ;;;
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-	PRINT,''
-	PRINT,'IDL Elevation Moments:   ',elevMean,elevVariance,elevSkewness*(elevVariance^1.5D),FORMAT='(A,3E16.7)'
-	PRINT,'    Elevation Moments:   ',elevMoments[0],elevMoments[1],elevMoments[2],FORMAT='(A,3E16.7)'
-	PRINT,'    Elevation Cumulants: ',elevCumulants[0],elevCumulants[1],elevCumulants[2],FORMAT='(A,3E16.7)'
-	PRINT,''
-	PRINT,'IDL Slope Moments:   ',slopeMean,slopeVariance,slopeSkewness*(slopeVariance^1.5D),FORMAT='(A,3E16.7)'
-	PRINT,'    Slope Moments:   ',slopeMoments[0],slopeMoments[1],slopeMoments[2],FORMAT='(A,3E16.7)'
-	PRINT,'    Slope Cumulants: ',slopeCumulants[0],slopeCumulants[1],slopeCumulants[2],FORMAT='(A,3E16.7)'
-	PRINT,''
-	;PRINT,'IDL Glint Moments:   ',glintMean,glintVariance,glintSkewness*(glintVariance^1.5D),FORMAT='(A,3E16.7)'
-	PRINT,'Glint First Moments:   ',glintFirstMoments,FORMAT='(A/,'+STRING(GEOM.N_angles)+'E16.7/)'
-	PRINT,'Glint Cumulants:       ',TRANSPOSE(glintCumulants),FORMAT='(A/,3('+STRING(GEOM.N_angles)+'E16.7/))'
+	print ''
+	print 'IDL Elevation Moments:   ',elevMean,elevVariance,elevSkewness*(elevVariance^1.5D),FORMAT='(A,3E16.7)'
+	print '    Elevation Moments:   ',elevMoments[0],elevMoments[1],elevMoments[2],FORMAT='(A,3E16.7)'
+	print '    Elevation Cumulants: ',elevCumulants[0],elevCumulants[1],elevCumulants[2],FORMAT='(A,3E16.7)'
+	print ''
+	print 'IDL Slope Moments:   ',slopeMean,slopeVariance,slopeSkewness*(slopeVariance^1.5D),FORMAT='(A,3E16.7)'
+	print '    Slope Moments:   ',slopeMoments[0],slopeMoments[1],slopeMoments[2],FORMAT='(A,3E16.7)'
+	print '    Slope Cumulants: ',slopeCumulants[0],slopeCumulants[1],slopeCumulants[2],FORMAT='(A,3E16.7)'
+	print ''
+	;print 'IDL Glint Moments:   ',glintMean,glintVariance,glintSkewness*(glintVariance^1.5D),FORMAT='(A,3E16.7)'
+	print 'Glint First Moments:   ',glintFirstMoments,FORMAT='(A/,'+STRING(GEOM.N_angles)+'E16.7/)'
+	print 'Glint Cumulants:       ',TRANSPOSE(glintCumulants),FORMAT='(A/,3('+STRING(GEOM.N_angles)+'E16.7/))'
 
-	PRINT,''
-	PRINT,"Elevation third moment from bicovariance: ",DOUBLE(elevThirdMomentFunction[0L,0L]),FORMAT='(A,E16.7)'
-	PRINT,"  Elevation third moment from bispectrum: ",TOTAL(DOUBLE(elevBispectrum)),FORMAT='(A,E16.7)'
-	PRINT,''
-	PRINT,"    Slope third moment from bicovariance: ",DOUBLE(slopeThirdMomentFunction[0L,0L]),FORMAT='(A,E16.7)'
-	PRINT,"      Slope third moment from bispectrum: ",TOTAL(DOUBLE(slopeBispectrum)),FORMAT='(A,E16.7)'
-	PRINT,''
-	PRINT,"    glint third moment from bicovariance: ",DOUBLE(glintThirdMomentFunction[0L,0L,*]),FORMAT='(A,5E16.7)'
-	PRINT,"      glint third moment from bispectrum: "
+	print ''
+	print "Elevation third moment from bicovariance: ",DOUBLE(elevThirdMomentFunction[0L,0L]),FORMAT='(A,E16.7)'
+	print "  Elevation third moment from bispectrum: ",TOTAL(DOUBLE(elevBispectrum)),FORMAT='(A,E16.7)'
+	print ''
+	print "    Slope third moment from bicovariance: ",DOUBLE(slopeThirdMomentFunction[0L,0L]),FORMAT='(A,E16.7)'
+	print "      Slope third moment from bispectrum: ",TOTAL(DOUBLE(slopeBispectrum)),FORMAT='(A,E16.7)'
+	print ''
+	print "    glint third moment from bicovariance: ",DOUBLE(glintThirdMomentFunction[0L,0L,*]),FORMAT='(A,5E16.7)'
+	print "      glint third moment from bispectrum: "
 	FOR angle=0L, GEOM.N_angles-1L DO BEGIN
-		PRINT, TOTAL(DOUBLE(glintBispectrum[*,*,angle])),FORMAT='(E16.7)'
+		print  TOTAL(DOUBLE(glintBispectrum[*,*,angle])),FORMAT='(E16.7)'
 	ENDFOR
-	PRINT,''
+	print ''
 
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	;;;   Open the output HDF file   ;;;
@@ -846,23 +844,23 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 
 	fileName = STRCOMPRESS(fileName,/REMOVE_ALL)
 
-	PRINT,"Open output filename: ",filename
+	print "Open output filename: ",filename
 
 	outFile = fileinfo(fileName)
 	help, fileinfo(fileName), /structure
-	PRINT, outFile
+	print  outFile
 
 	IF (NOT outFile.EXIST) THEN BEGIN
 		;;; Create and open file using SD interface
 		fileID = HDF_SD_START(fileName, /CREATE)
 		;fileID = HDF_OPEN(fileName, /CREATE,/WRITE)
-		PRINT, 'Created new HDF file: ',fileName
+		print  'Created new HDF file: ',fileName
 	ENDIF ELSE BEGIN
 		;;; Create and open file using SD interface
-		PRINT, 'HDF file ',fileName,' exists, opening...'
+		print  'HDF file ',fileName,' exists, opening...'
 		fileID = HDF_SD_START(fileName, /RdWr)
 		;fileID = HDF_OPEN(fileName, /WRITE)
-		PRINT, 'Opened HDF file ',fileName,' for reading and writing'
+		print  'Opened HDF file ',fileName,' for reading and writing'
 	ENDELSE
 
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -888,7 +886,7 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 		;;;   Save the geometry information to global attributes, and variables   ;;;
 		;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-		PRINT, 'Writing geometry angles and slopes...'
+		print  'Writing geometry angles and slopes...'
 
 		sourceAngleID  = HDF_SD_CREATE(fileID, "Solar Zenith Angles", [GEOM.N_angles], /FLOAT)
 		HDF_SD_ADDDATA, sourceAngleID, GEOM.source_angle
@@ -924,7 +922,7 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 		;;;   Save the elevation, slope and glint moments   ;;;
 		;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 		
-		PRINT, 'Writing the elevation, slope and glint moments...'
+		print  'Writing the elevation, slope and glint moments...'
 
 		elevMomentID  = HDF_SD_CREATE(fileID, 'Elevation Moments', [numMoments],    /FLOAT)
 		HDF_SD_ADDDATA, elevMomentID , elevMoments
@@ -948,7 +946,7 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 		;;;   Save the elevation, slope and glint cumulants ;;;
 		;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 		
-		PRINT, 'Writing the elevation, slope and glint cumulants...'
+		print  'Writing the elevation, slope and glint cumulants...'
 
 		elevCumulantID  = HDF_SD_CREATE(fileID, 'Elevation Cumulants', [numMoments],    /FLOAT)
 		HDF_SD_ADDDATA, elevCumulantID , elevCumulants
@@ -974,7 +972,7 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 		;;;   Save the indices of the interating modes   ;;;
 		;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 		
-		PRINT, 'Writing indices of nonlinear components...'
+		print  'Writing indices of nonlinear components...'
 
 		free1ID  = HDF_SD_CREATE(fileID, "Indices of first free wavenumber modes", [N_ELEMENTS(NLCOUPLING.free1)], /LONG)
 		HDF_SD_ADDDATA, free1ID, NLCOUPLING.free1
@@ -1011,7 +1009,7 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 		;;;   Save the average power spectra   ;;;
 		;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-		PRINT, 'Writing average power spectra ...'
+		print  'Writing average power spectra ...'
 
 		;;; Elevation Power Spectrum
 		
@@ -1062,7 +1060,7 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 		;;;   Save the Second Moment Functions   ;;;
 		;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 		
-		PRINT, 'Writing average second moment functions ...'
+		print  'Writing average second moment functions ...'
 		
 		;;; Elevation Second Moment Function
 
@@ -1100,7 +1098,7 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 		;;;   Save the Second Cumulant Functions   ;;;
 		;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 		
-		PRINT, 'Writing average second cumulant functions ...'
+		print  'Writing average second cumulant functions ...'
 		
 		;;; Elevation Second Cumulant Function
 
@@ -1151,7 +1149,7 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 		;;;   Save the Average Bispectra   ;;;
 		;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 		
-		PRINT, 'Writing average bispectra ...'
+		print  'Writing average bispectra ...'
 		tempArr = DBLARR(NN,NN,2)
 		tempGlintArr = DBLARR(NN,NN,2,GEOM.N_angles)
 		
@@ -1217,7 +1215,7 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 		;;;   Save the Average Bicoherence ;;;
 		;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 		
-		PRINT, 'Writing average bicoherence ...'
+		print  'Writing average bicoherence ...'
 		
 		;;; Elevation Bicoherence
 		
@@ -1274,7 +1272,7 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 		;;;   Save the Third Moment Functions   ;;;
 		;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 		
-		PRINT, 'Writing average third moment functions ...'
+		print  'Writing average third moment functions ...'
 		
 		;;; Elevation Third Moment Function
 
@@ -1318,7 +1316,7 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 		;;;   Save the Third Cumulant Functions   ;;;
 		;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 		
-		PRINT, 'Writing average third Cumulant functions ...'
+		print  'Writing average third Cumulant functions ...'
 		
 		;;; Elevation Third Cumulant Function
 
@@ -1362,7 +1360,7 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 		
 		;;; Update the existing variables
 
-		PRINT, 'Updating the elevation, slope and glint moments...'
+		print  'Updating the elevation, slope and glint moments...'
 
 		sds_index  = hdf_sd_nametoindex(fileID, 'Elevation Moments')
 		sds_id = hdf_sd_select(fileID,sds_index)
@@ -1381,7 +1379,7 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 
 		;;;;;;;;;
 		
-		PRINT, 'Updating the free and bound indices...'
+		print  'Updating the free and bound indices...'
 		
 		sds_index  = hdf_sd_nametoindex(fileID, "Indices of first free wavenumber modes")
 		sds_id = hdf_sd_select(fileID,sds_index)
@@ -1400,7 +1398,7 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 
 		;;;;;;;;;
 
-		PRINT, 'Updating the elevation, slope and glint power spectra...'
+		print  'Updating the elevation, slope and glint power spectra...'
 
 		sds_index = hdf_sd_nametoindex(fileID,"Average Elevation Power Spectrum")
 		sds_id = hdf_sd_select(fileID,sds_index)
@@ -1419,7 +1417,7 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 
 		;;;;;;;;;
 
-		PRINT, 'Updating the elevation, slope and glint bispectra...'
+		print  'Updating the elevation, slope and glint bispectra...'
 
 		sds_index = hdf_sd_nametoindex(fileID,"Average Elevation Bispectrum")
 		sds_id = hdf_sd_select(fileID,sds_index)
@@ -1438,7 +1436,7 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 
 		;;;;;;;;;
 
-		PRINT, 'Updating the elevation, slope and glint third moment functions...'
+		print  'Updating the elevation, slope and glint third moment functions...'
 
 		sds_index = hdf_sd_nametoindex(fileID,"Average Elevation Third Moment Function")
 		sds_id = hdf_sd_select(fileID,sds_index)
@@ -1464,8 +1462,8 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 	HDF_SD_END, fileID
-	PRINT, 'Write Operation Completed'
-	PRINT, ''
+	print  'Write Operation Completed'
+	print  ''
 
 
 
