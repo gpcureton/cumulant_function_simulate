@@ -1,6 +1,7 @@
 cd sandbox/Python/sunglint/cumulantFunctionSimulate
 ipython -qthread
 from matplotlib import pylab as pl
+import numpy as np
 import cumulantFunctionSimulate as cFS
 reload(cFS.elevPowerSpectrum);reload(cFS.cumulantFunctionSimulate)
 pl.close('all');cFS.cumulantFunctionSimulate.cumulantFunctionSimulate(4096,512,0.02,200,'phillips',3,0)

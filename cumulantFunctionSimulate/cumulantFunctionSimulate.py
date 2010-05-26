@@ -73,6 +73,14 @@ class DataStatsStruct :
         self.moments = np.zeros(numMoments, double)
         self.cumulants = np.zeros(numMoments, double)
 
+    def cumulantsFromMoments(self):
+        self.cumulants[0] = self.moments[0]
+        self.cumulants[1] = self.moments[1] - self.moments[0]**2.
+        self.cumulants[2] = self.moments[2] - 3.*self.moments[0]*self.moments[1] + 2.*self.moments[0]**3.
+        self.mean     = self.cumulants[0]
+        self.variance = self.cumulants[1]
+        self.skewness = self.cumulants[2]/((self.cumulants[1])**1.5)
+
 def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 
     """
@@ -117,7 +125,17 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 
     phillips_elev_spectrum(Scale,ElevPower,NLCoupling,specExp)
 
-    pl.figure()
+    
+    #left  = 0.125  # the left side of the subplots of the figure
+    #right = 0.9    # the right side of the subplots of the figure
+    #bottom = 0.1   # the bottom of the subplots of the figure
+    #top = 0.9      # the top of the subplots of the figure
+    #wspace = 0.2   # the amount of width reserved for blank space between subplots
+    #hspace = 0.2   # the amount of height reserved for white space between subplots
+
+    pl.figure(figsize=(12,8))
+    pl.subplot(2,2,1)
+    pl.subplots_adjust(left=0.05,right=0.95,bottom=0.05,top=0.95,wspace=0.15,hspace=0.15)
     pl.plot(Scale.k,ElevPower.primaryPower,label="primary")
     pl.plot(Scale.k,ElevPower.nlPower,label="nonLinear")
     pl.plot(Scale.k,ElevPower.totalPower,label="total")
@@ -165,7 +183,8 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
     SlopePower.nlPower = k*k*ElevPower.nlPower
     SlopePower.totalPower = k*k*ElevPower.totalPower
 
-    pl.figure()
+    #pl.figure()
+    pl.subplot(2,2,2)
     pl.plot(Scale.k,SlopePower.primaryPower,label="primary")
     pl.plot(Scale.k,SlopePower.nlPower,label="nonLinear")
     pl.plot(Scale.k,SlopePower.totalPower,label="total")
@@ -299,10 +318,6 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
         #print "glintStats[%1d].variance = %f" % (geoms,glintStats[geoms].variance)
         #print "glintStats[%1d].skewness = %f" % (geoms,glintStats[geoms].skewness)
 
-    #elevMoments       = DBLARR(numMoments)
-    #slopeMoments      = DBLARR(numMoments)
-    #glintFirstMoments = DBLARR(GEOM.N_angles)
-	
     """
         Loop through the surface realisations for the quadratically
         coupled oscillations
@@ -370,7 +385,8 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 
         ### Compute the elevation moments
 
-        print "\tElevation mean from elevStats.moments: ",np.sum(totalElevSurface.real)/double(N)
+        print "\tElevation mean from elevStats.moments:     ",np.sum(totalElevSurface.real)/double(N)
+        print "\tElevation stdev from elevStats.moments:    ",sqrt(np.sum(totalElevSurface.real**2.)/double(N))
         print "\tElevation variance from elevStats.moments: ",np.sum(totalElevSurface.real**2.)/double(N)
         print "\tElevation skewness from elevStats.moments: ",np.sum(totalElevSurface.real**3.)/double(N)
 
@@ -417,17 +433,14 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 
         ### Compute the slope moments
 
+        print "\tSlope mean from elevStats.moments:     ",np.sum(totalSlopeSurface.real)/double(N)
+        print "\tSlope stdev from elevStats.moments:    ",sqrt(np.sum(totalSlopeSurface.real**2.)/double(N))
+        print "\tSlope variance from elevStats.moments: ",np.sum(totalSlopeSurface.real**2.)/double(N)
+        print "\tSlope skewness from elevStats.moments: ",np.sum(totalSlopeSurface.real**3.)/double(N)
+
         slopeStats.moments += [ np.sum(totalSlopeSurface    )/double(N), \
                                 np.sum(totalSlopeSurface**2.)/double(N), \
                                 np.sum(totalSlopeSurface**3.)/double(N) ]
-
-        #slopeMoments += [	TOTAL(DOUBLE(totalSlopeSurface))/DOUBLE(N), $
-                            #TOTAL(DOUBLE(totalSlopeSurface)^2.D)/DOUBLE(N), $ 
-                            #TOTAL(DOUBLE(totalSlopeSurface)^3.D)/DOUBLE(N) ]
-
-		#slopeMean += MEAN(DOUBLE(totalSlopeSurface),/DOUBLE)
-		#slopeVariance += VARIANCE(DOUBLE(totalSlopeSurface),/DOUBLE)
-		#slopeSkewness += SKEWNESS(DOUBLE(totalSlopeSurface),/DOUBLE)
 
 		### Compute the Fourier spectra of the total surfaces
         totalElevSpectrum = ifft(totalElevSurface)
@@ -437,88 +450,68 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 		    Loop through the geometries in the GEOM structure
         """
 
-        #for angle in np.arange(Geom.N_angles) :
+        for angle in np.arange(Geom.N_angles) :
 
-            #"""
-            #Check if we have finished processing for this
-            #angle.
-            #"""
+            """
+            Check if we have finished processing for this
+            angle.
+            """
 
-            #if (angleRuns[angle] < N_r) :
+            if (angleRuns[angle] < N_r) :
 
-                #print "Processing angle ",angle," for run ",angleRuns[angle]+1L, \
-                #" --> attempt ",angleRunsCum[angle]+1L
+                print "\n\tProcessing angle ",angle," for run ",angleRuns[angle]+1L, \
+                " --> attempt ",angleRunsCum[angle]+1L
 
-                #"""
-                    #Compute the glint realisation from the slope
-                    #realisations
-                #"""
+                """
+                    Compute the glint realisation from the slope
+                    realisations
+                """
 
-                #slopeMin = Geom.xi_min[angle]
-                #slopeMax = Geom.xi_max[angle]
+                slopeMin = Geom.xi_min[angle]
+                slopeMax = Geom.xi_max[angle]
 
-                #pl.figure()
-                #pl.plot(totalSlopeSurface)
-                #pl.plot(np.ones(N)*slopeMin)
-                #pl.plot(np.ones(N)*slopeMax)
-                #pl.plot(totalSlopeSurface.real)
-                #pl.plot(totalSlopeSurface.imag)
-                #pl.show()
-
-                #glint = np.array(((totalSlopeSurface.real > slopeMin)*(totalSlopeSurface.real < slopeMax)))
-                #print "shape(glint) = ",np.shape(glint)
-                #print "glint = ",glint
-                #pl.plot(glint)
-                #pl.show()
-                #glint = glint - MEAN(glint)
+                glint = np.array(((totalSlopeSurface.real > slopeMin)*(totalSlopeSurface.real < slopeMax)))
 
                 ### Check if all glint elements vanish
-                #result=where(glint,NCOMPLEMENT=vanishCount)
-                #result=np.array(np.where(glint))
-                #print "shape(result) = ",np.shape(result)
+                result=np.array(np.where(glint))
 
-                #if ((result.squeeze()).shape == (0,)) :
+                if ((result.squeeze()).shape == (0,)) :
 
-                    #print "Zero-glint realisation angle ",angle, \
-                    #" for run ",angleRuns[angle]+1, \
-                    #" --> attempt ",angleRunsCum[angle]+1
+                    print "\tZero-glint realisation angle ",angle, \
+                    " for run ",angleRuns[angle]+1, \
+                    " --> attempt ",angleRunsCum[angle]+1
 
                     ### There are no glints, add to attempts count
 
                     ### If this angle fails and there are no glints, then steeper 
                     ### angles will fail also, so break out of the angle loop and 
                     ### proceed to the next realisation...
-                    #angleRunsCum[angle:Geom.N_angles] += 1
-                    #break
+                    angleRunsCum[angle:Geom.N_angles] += 1
+                    break
 
-                #else :
+                else :
 
-                    #print "Successful realisation angle ",angle, \
-                    #" for run ",angleRuns[angle] + 1, \
-                    #" --> attempt ",angleRunsCum[angle]+1
+                    print "\tSuccessful realisation angle ",angle, \
+                    " for run ",angleRuns[angle] + 1, \
+                    " --> attempt ",angleRunsCum[angle]+1
 
-                    #angleRuns[angle] += 1
-                    #angleRunsCum[angle] += 1
+                    angleRuns[angle] += 1
+                    angleRunsCum[angle] += 1
 
                     ### Compute the glint moments
 
-                    #glintFirstMoments[angle] += TOTAL(DOUBLE(glint))/DOUBLE(N)
-                    #glintStats[angle].moments += [ np.sum(glint    )/double(N), \
-                                   #np.sum(glint**2.)/double(N), \
-                                   #np.sum(glint**3.)/double(N) ]
-
-                    #glintMean[angle]     += MEAN(DOUBLE(glint),/DOUBLE)
-                    #glintVariance[angle] += VARIANCE(DOUBLE(glint),/DOUBLE)
-                    #glintSkewness[angle] += SKEWNESS(DOUBLE(glint),/DOUBLE)
+                    glintStats[angle].moments += [ np.sum(glint.real    )/double(N), \
+                                                   np.sum(glint.real**2.)/double(N), \
+                                                   np.sum(glint.real**3.)/double(N) ]
 
                     ### Compute the Fourier spectrum of this glint realisation
-                    #glintSpectrum = ifft(glint)
+                    glintSpectrum = ifft(glint)
 
-                    #"""
-                    #Compute the average glint power spectrum
-                    #"""
+                    """
+                    Compute the average glint power spectrum
+                    """
 
-                    #totalGlintAvgPower[angle] += abs(glintSpectrum)**2.
+                    totalGlintAvgPower[angle] += abs(glintSpectrum)**2.
 
                 ### End checking for zero-glint of this angle
 
@@ -528,8 +521,17 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 
     ### End realisation loop
 
-    pl.figure()
-    pl.plot(Scale.k,2.*totalSlopeAvgPower/(delta_k*N_r),label="primary")
+    #pl.figure()
+    pl.subplot(2,2,3)
+    pl.plot(Scale.k,2.*totalElevAvgPower/(delta_k*N_r),label="total")
+    pl.xlim(0.,3.)
+    pl.ylim(-0.0005,0.005)
+    pl.legend()
+    pl.title("Average Elevation Power Spectrum")
+    pl.show()
+
+    pl.subplot(2,2,4)
+    pl.plot(Scale.k,2.*totalSlopeAvgPower/(delta_k*N_r),label="total")
     pl.xlim(0.,3.)
     pl.ylim(-0.0005,0.005)
     pl.legend()
@@ -546,10 +548,49 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
     print  "Final N_r_cum = ",N_r_cum
 
     elevStats.moments /= double(N_runs)
-    print "\nElevation mean from elevStats.moments:",elevStats.moments[0]
-    print "Elevation stdev from elevStats.moments:",sqrt(elevStats.moments[1])
-    print "Elevation variance from elevStats.moments:",elevStats.moments[1]
-    print "Elevation skewness from elevStats.moments:",elevStats.moments[2]
+    elevStats.cumulantsFromMoments()
+    slopeStats.moments /= double(N_runs)
+    slopeStats.cumulantsFromMoments()
+    for geoms in np.arange(Geom.N_angles) :
+        glintStats[geoms].cumulantsFromMoments()
+
+    print "\nElevation first moment  :",elevStats.moments[0]
+    print "Elevation second moment :",elevStats.moments[1]
+    print "Elevation third moment  :",elevStats.moments[2]
+
+    print "\nElevation first cumulant  :",elevStats.cumulants[0]
+    print "Elevation second cumulant :",elevStats.cumulants[1]
+    print "Elevation third cumulant  :",elevStats.cumulants[2]
+
+    print "\nElevation mean :",elevStats.mean
+    print "Elevation stdev :",sqrt(elevStats.variance)
+    print "Elevation variance :",elevStats.variance
+    print "Elevation skewness :",elevStats.skewness
+
+    print "\nSlope first moment  :",slopeStats.moments[0]
+    print "Slope second moment  :",slopeStats.moments[1]
+    print "Slope third moment   :",slopeStats.moments[2]
+
+    print "\nSlope first cumulant  :",slopeStats.cumulants[0]
+    print "Slope second cumulant  :",slopeStats.cumulants[1]
+    print "Slope third cumulant   :",slopeStats.cumulants[2]
+
+    print "\nSlope mean :",slopeStats.mean
+    print "Slope stdev :",sqrt(slopeStats.variance)
+    print "Slope variance :",slopeStats.variance
+    print "Slope skewness :",slopeStats.skewness
+
+    for geoms in np.arange(Geom.N_angles) :
+        print "Angle ",geoms,"..."
+        print "\n\tGlint first moment  :",glintStats[geoms].moments[0]
+        print "\tGlint second moment :",glintStats[geoms].moments[1]
+        print "\tGlint third moment  :",glintStats[geoms].moments[2]
+
+    for geoms in np.arange(Geom.N_angles) :
+        print "Angle ",geoms,"..."
+        print "\n\tGlint first cumulant  :",glintStats[geoms].cumulants[0]
+        print "\tGlint second cumulant :",glintStats[geoms].cumulants[1]
+        print "\tGlint third cumulant  :",glintStats[geoms].cumulants[2]
 
 """
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
