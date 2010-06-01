@@ -6,6 +6,7 @@ from numpy import float64 as double
 
 import matplotlib as mpl
 from matplotlib import pylab as pl
+from scipy import stats as stats
 
 from elevPowerSpectrum import phillips_elev_spectrum
 
@@ -125,26 +126,6 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 
     phillips_elev_spectrum(Scale,ElevPower,NLCoupling,specExp)
 
-    
-    #left  = 0.125  # the left side of the subplots of the figure
-    #right = 0.9    # the right side of the subplots of the figure
-    #bottom = 0.1   # the bottom of the subplots of the figure
-    #top = 0.9      # the top of the subplots of the figure
-    #wspace = 0.2   # the amount of width reserved for blank space between subplots
-    #hspace = 0.2   # the amount of height reserved for white space between subplots
-
-    #pl.figure(figsize=(12,8))
-    #pl.subplot(2,2,1)
-    #pl.subplots_adjust(left=0.05,right=0.95,bottom=0.05,top=0.95,wspace=0.15,hspace=0.15)
-    #pl.plot(Scale.k,ElevPower.primaryPower,label="primary")
-    #pl.plot(Scale.k,ElevPower.nlPower,label="nonLinear")
-    #pl.plot(Scale.k,ElevPower.totalPower,label="total")
-    #pl.xlim(0.,3.)
-    #pl.ylim(-0.0005,0.005)
-    #pl.legend()
-    #pl.title("Elevation Power Spectrum")
-    #pl.show()
-
     print '\nFirst component indicies for free waves ...'
     print NLCoupling.free1
     print Scale.k[NLCoupling.free1]/Scale.k_N
@@ -183,16 +164,6 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
     SlopePower.nlPower = k*k*ElevPower.nlPower
     SlopePower.totalPower = k*k*ElevPower.totalPower
 
-    #pl.subplot(2,2,2)
-    #pl.plot(Scale.k,SlopePower.primaryPower,label="primary")
-    #pl.plot(Scale.k,SlopePower.nlPower,label="nonLinear")
-    #pl.plot(Scale.k,SlopePower.totalPower,label="total")
-    #pl.xlim(0.,3.)
-    #pl.ylim(-0.0005,0.005)
-    #pl.legend()
-    #pl.title("Slope Power Spectrum")
-    #pl.show()
-
     totalSlopePower = SlopePower.totalPower
     primarySlopePower = SlopePower.primaryPower
     nlSlopePower = SlopePower.nlPower
@@ -210,6 +181,32 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
     print SlopePower.nlPower[NLCoupling.bound]
     print "Ratio of bound to free slope power at the bound wavenumbers..."
     print SlopePower.nlPower[NLCoupling.bound]/totalSlopePower[NLCoupling.bound]
+
+    """
+        Initialise the curvature power spectrum structure
+    """
+    CurvaturePower = copy.deepcopy(ElevPower)
+    CurvaturePower.primaryPower = k*k*k*k*ElevPower.primaryPower
+    CurvaturePower.nlPower = k*k*k*k*ElevPower.nlPower
+    CurvaturePower.totalPower = k*k*k*k*ElevPower.totalPower
+
+    totalCurvaturePower = CurvaturePower.totalPower
+    primaryCurvaturePower = CurvaturePower.primaryPower
+    nlCurvaturePower = CurvaturePower.nlPower
+
+    print "\nCurvature stdev from power vector: %10.6f meters^{-1}" % \
+        (sqrt(np.sum(totalCurvaturePower)*delta_k))
+    print "Curvature variance from power vector: %10.6f meters^{-2}" % \
+        (np.sum(totalCurvaturePower)*delta_k)
+
+    print "\nTotal curvature power at the bound wavenumbers..."
+    print totalCurvaturePower[NLCoupling.bound]
+    print "Free curvature power at the bound wavenumbers..."
+    print CurvaturePower.primaryPower[NLCoupling.bound]
+    print "Bound curvature power at the bound wavenumbers..."
+    print CurvaturePower.nlPower[NLCoupling.bound]
+    print "Ratio of bound to free curvature power at the bound wavenumbers..."
+    print CurvaturePower.nlPower[NLCoupling.bound]/totalCurvaturePower[NLCoupling.bound]
 
     """
         Compute the total elevation amplitude, phase and spectrum,
@@ -233,7 +230,6 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
             (sqrt(np.sum(totalElevAmplitude**2.)))
     print "Elevation variance from amplitude vector: %10.6f meters^{2}" % \
             (np.sum(totalElevAmplitude**2.))
-
 
     testElevPhase = np.random.rand(N)*2.*pi - pi
     totalElevSpectrum = totalElevAmplitude*(cos(testElevPhase) + 1j*sin(testElevPhase))
@@ -273,26 +269,96 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
     nlSlopeSpectrum = np.zeros(N,dtype=np.complex64)
     nlSlopeSurface = np.zeros(N,dtype=np.complex64)
 
-    print "\nSlope stdev from amplitude vector: %10.6f meters " % \
+    print "\nSlope stdev from amplitude vector: %10.6f" % \
             (sqrt(np.sum(totalSlopeAmplitude**2.)))
-    print "Slope variance from amplitude vector: %10.6f meters^{2}" % \
+    print "Slope variance from amplitude vector: %10.6f" % \
             (np.sum(totalSlopeAmplitude**2.))
 
-    testSlopePhase = np.random.rand(N)*2.*pi - pi
-    totalSlopeSpectrum = totalSlopeAmplitude*(-sin(testSlopePhase) + 1j*cos(testSlopePhase))
+    totalSlopeSpectrum = totalSlopeAmplitude*(+sin(testElevPhase) - 1j*cos(testElevPhase))
     totalSlopeSpectrum[N/2+1 :] = np.conjugate(totalSlopeSpectrum[1L : N/2][::-1])
     totalSlopeSurface = fft(totalSlopeSpectrum)
 
-    print "\nSlope mean from surface:    %10.6f meters " % \
+    print "\nSlope mean from surface:    %10.6f" % \
             np.mean(totalSlopeSurface.real)
-    print "Slope stdev from surface:    %10.6f meters " % \
+    print "Slope stdev from surface:    %10.6f" % \
             np.std(totalSlopeSurface.real)
-    print "Slope variance from surface: %10.6f meters^{2} " % \
+    print "Slope variance from surface: %10.6f" % \
             np.var(totalSlopeSurface.real)
 
     totalSlopeAvgPower = np.zeros(N,dtype=double)
     primarySlopeAvgPower = np.zeros(N,dtype=double)
     nlSlopeAvgPower = np.zeros(N,dtype=double)
+
+    """
+        Compute the total curvature amplitude, phase and spectrum
+    """
+
+    totalCurvatureAmplitude = np.zeros(N,dtype=double)
+    totalCurvatureAmplitude = sqrt(0.5*totalCurvaturePower*delta_k)
+    totalCurvatureAmplitude[N/2+1 :] = totalCurvatureAmplitude[1L : N/2][::-1]
+    totalCurvatureSpectrum = np.zeros(N,dtype=np.complex64)
+    totalCurvatureSurface = np.zeros(N,dtype=np.complex64)
+
+    primaryCurvatureAmplitude = np.zeros(N,dtype=double)
+    primaryCurvatureAmplitude = sqrt(0.5*primaryCurvaturePower*delta_k)
+    primaryCurvatureAmplitude[N/2+1 :] = primaryCurvatureAmplitude[1L : N/2][::-1]
+    primaryCurvatureSpectrum = np.zeros(N,dtype=np.complex64)
+    primaryCurvatureSurface = np.zeros(N,dtype=np.complex64)
+
+    nlCurvatureAmplitude = np.zeros(N,dtype=double)
+    nlCurvatureAmplitude = sqrt(0.5*nlCurvaturePower*delta_k)
+    nlCurvatureAmplitude[N/2+1 :] = nlCurvatureAmplitude[1L : N/2][::-1]
+    nlCurvatureSpectrum = np.zeros(N,dtype=np.complex64)
+    nlCurvatureSurface = np.zeros(N,dtype=np.complex64)
+
+    print "\nCurvature stdev from amplitude vector: %10.6f meters^{-1} " % \
+            (sqrt(np.sum(totalCurvatureAmplitude**2.)))
+    print "Curvature variance from amplitude vector: %10.6f meters^{-2}" % \
+            (np.sum(totalCurvatureAmplitude**2.))
+
+    totalCurvatureSpectrum = totalCurvatureAmplitude*(-cos(testElevPhase) - 1j*sin(testElevPhase))
+    totalCurvatureSpectrum[N/2+1 :] = np.conjugate(totalCurvatureSpectrum[1L : N/2][::-1])
+    totalCurvatureSurface = fft(totalCurvatureSpectrum)
+
+    print "\nCurvature mean from surface:    %10.6f meters^{-1} " % \
+            np.mean(totalCurvatureSurface.real)
+    print "Curvature stdev from surface:    %10.6f meters^{-1}" % \
+            np.std(totalCurvatureSurface.real)
+    print "Curvature variance from surface: %10.6f meters^{-2} " % \
+            np.var(totalCurvatureSurface.real)
+
+    totalCurvatureAvgPower = np.zeros(N,dtype=double)
+    primaryCurvatureAvgPower = np.zeros(N,dtype=double)
+    nlCurvatureAvgPower = np.zeros(N,dtype=double)
+
+    """
+        Plot a single instance of the elevation, slope, curvature and glint, for
+        comparison purposes.
+    """
+    pl.figure(figsize=(12,8))
+    pl.subplot(3,1,1)
+    pl.subplots_adjust(left=0.05,right=0.95,bottom=0.05,top=0.95,wspace=0.15,hspace=0.15)
+    pl.plot(Scale.x,totalElevSurface.real,label="Elevation")
+    #pl.xlim(11.,12.)
+    #pl.ylim(-0.0005,0.005)
+    pl.legend()
+    pl.show()
+
+    pl.subplot(3,1,2)
+    pl.plot(Scale.x,totalSlopeSurface.real,label="Slope")
+    pl.plot(Scale.x[:-1],np.diff(totalElevSurface.real,n=1)/delta_x,label="Slope (diff)")
+    #pl.xlim(11.,12.)
+    #pl.ylim(-0.0005,0.005)
+    pl.legend()
+    pl.show()
+
+    pl.subplot(3,1,3)
+    pl.plot(Scale.x,totalCurvatureSurface,label="Curvature")
+    pl.plot(Scale.x[1:-1],np.diff(totalElevSurface.real,n=2)/(delta_x**2.),label="Curvature (diff)")
+    #pl.xlim(11.,12.)
+    #pl.ylim(-0.0005,0.005)
+    pl.legend()
+    pl.show()
 
     """
 	    Define the glint, glint spectrum and glint power
@@ -311,6 +377,7 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 
     elevStats = DataStatsStruct(numMoments)
     slopeStats = DataStatsStruct(numMoments)
+    curvatureStats = DataStatsStruct(numMoments)
     glintStats = [DataStatsStruct(numMoments) for geoms in np.arange(Geom.N_angles) ]
 
     """
@@ -361,13 +428,6 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
         nlElevSurface = fft(nlElevSpectrum)                                ### Bound waves
         totalElevSurface = primaryElevSurface + nlElevSurface              ### Total surface
  
-        #print "\n\tElevation mean from surface:     %10.6e meters" % \
-                #np.mean(totalElevSurface.real)
-        #print "\tElevation stdev from surface:    %10.6e meters" % \
-                #np.std(totalElevSurface.real)
-        #print "\tElevation variance from surface: %10.6e meters^{2}\n" % \
-                #np.var(totalElevSurface.real)
-
 		### Compute the average power spectrum for free, bound and total elevation waves
         primaryElevAvgPower += abs(ifft(primaryElevSurface))**2.
         nlElevAvgPower += abs(ifft(nlElevSurface))**2.
@@ -380,14 +440,16 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 
         ### Compute the elevation moments
 
-        #print "\tElevation mean from elevStats.moments:     %10.6e" % double(np.sum(totalElevSurface.real)/double(N))
-        #print "\tElevation stdev from elevStats.moments:    %10.6e" % double(sqrt(np.sum(totalElevSurface.real**2.)/double(N)))
-        #print "\tElevation variance from elevStats.moments: %10.6e" % double(np.sum(totalElevSurface.real**2.)/double(N))
-        #print "\tElevation skewness from elevStats.moments: %10.6e" % double(np.sum(totalElevSurface.real**3.)/double(N))
+        elevStats.mean     += stats.mean(totalElevSurface.real)
+        elevStats.variance += stats.var(totalElevSurface.real)
+        elevStats.skewness += stats.skew(totalElevSurface.real)
 
         elevStats.moments += [ np.sum(totalElevSurface.real    )/double(N), \
                                np.sum(totalElevSurface.real**2.)/double(N), \
                                np.sum(totalElevSurface.real**3.)/double(N)]
+
+		### Compute the Fourier spectrum of the total surface
+        totalElevSpectrum = ifft(totalElevSurface)
 
         """
 		    Compute the slope realisations from the slope spectra
@@ -400,7 +462,7 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
         primarySlopeSpectrum[N/2+1:] = np.conjugate(primarySlopeSpectrum[1 : N/2][::-1])
 
         ### Calculate the slope spectrum for the bound waves
-        nlSlopeSpectrum = nlSlopeAmplitude*(-sin(nlElevPhase) + 1j*cos(nlElevPhase))
+        nlSlopeSpectrum = nlSlopeAmplitude*(sin(nlElevPhase) - 1j*cos(nlElevPhase))
         nlSlopeSpectrum[N/2+1:] = np.conjugate(nlSlopeSpectrum[1:N/2][::-1])
 
         ### Compute specific realisation of the free and bound waves. Nonlinear slope
@@ -408,13 +470,6 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
         primarySlopeSurface = fft(primarySlopeSpectrum)                    ### Free waves
         nlSlopeSurface = fft(nlSlopeSpectrum)                              ### Bound waves
         totalSlopeSurface = primarySlopeSurface + nlSlopeSurface           ### Total surface
-
-        #print "\n\tSlope mean from surface:     %10.6e meters " % \
-                #np.mean(totalSlopeSurface.real)
-        #print "\tSlope stdev from surface:    %10.6e meters " % \
-                #np.std(totalSlopeSurface.real)
-        #print "\tSlope variance from surface: %10.6e meters^{2} " % \
-                #np.var(totalSlopeSurface.real)
 
         ### Compute the average power spectrum for free, bound and total elevation waves
         primarySlopeAvgPower += abs(ifft(primarySlopeSurface))**2.
@@ -428,18 +483,59 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 
         ### Compute the slope moments
 
-        #print "\tSlope mean from elevStats.moments:     %10.6e" % double(np.sum(totalSlopeSurface.real)/double(N))
-        #print "\tSlope stdev from elevStats.moments:    %10.6e" % double(sqrt(np.sum(totalSlopeSurface.real**2.)/double(N)))
-        #print "\tSlope variance from elevStats.moments: %10.6e" % double(np.sum(totalSlopeSurface.real**2.)/double(N))
-        #print "\tSlope skewness from elevStats.moments: %10.6e" % double(np.sum(totalSlopeSurface.real**3.)/double(N))
+        slopeStats.mean     += stats.mean(totalSlopeSurface.real)
+        slopeStats.variance += stats.var(totalSlopeSurface.real)
+        slopeStats.skewness += stats.skew(totalSlopeSurface.real)
 
         slopeStats.moments += [ np.sum(totalSlopeSurface    )/double(N), \
                                 np.sum(totalSlopeSurface**2.)/double(N), \
                                 np.sum(totalSlopeSurface**3.)/double(N) ]
 
-		### Compute the Fourier spectra of the total surfaces
-        totalElevSpectrum = ifft(totalElevSurface)
+		### Compute the Fourier spectrum of the total surface
         totalSlopeSpectrum = ifft(totalSlopeSurface)
+
+        """
+		    Compute the curvature realisations from the curvature spectra
+		    and the synthesisised phases
+        """
+		
+        ### Calculate the curvature spectrum for the free waves
+        primaryCurvatureSpectrum = primaryCurvatureAmplitude*(-sin(primaryElevPhase) + 1j*cos(primaryElevPhase))
+        #primaryCurvatureSpectrum += 0.00001*MAX(totalCurvatureAmplitude)*RANDOMN(seed,N)
+        primaryCurvatureSpectrum[N/2+1:] = np.conjugate(primaryCurvatureSpectrum[1 : N/2][::-1])
+
+        ### Calculate the curvature spectrum for the bound waves
+        nlCurvatureSpectrum = nlCurvatureAmplitude*(-cos(nlElevPhase) - 1j*sin(nlElevPhase))
+        nlCurvatureSpectrum[N/2+1:] = np.conjugate(nlCurvatureSpectrum[1:N/2][::-1])
+
+        ### Compute specific realisation of the free and bound waves. Nonlinear curvature
+        ### (totalCurvatureSurface) is sum of free and bound waves.
+        primaryCurvatureSurface = fft(primaryCurvatureSpectrum)                    ### Free waves
+        nlCurvatureSurface = fft(nlCurvatureSpectrum)                              ### Bound waves
+        totalCurvatureSurface = primaryCurvatureSurface + nlCurvatureSurface       ### Total surface
+
+        ### Compute the average power spectrum for free, bound and total elevation waves
+        primaryCurvatureAvgPower += abs(ifft(primaryCurvatureSurface))**2.
+        nlCurvatureAvgPower += abs(ifft(nlCurvatureSurface))**2.
+        totalCurvatureAvgPower += abs(ifft(totalCurvatureSurface))**2.
+
+        #print "\n\tCurvature stdev from power vector:    %10.6e meters" % \
+            #(sqrt(np.sum(abs(ifft(totalCurvatureSurface.real))**2.)))
+        #print "\tCurvature variance from power vector: %10.6e meters^{2}\n" % \
+            #(np.sum(abs(ifft(totalCurvatureSurface.real))**2.))
+
+        ### Compute the curvature moments
+
+        curvatureStats.mean     += stats.mean(totalCurvatureSurface.real)
+        curvatureStats.variance += stats.var(totalCurvatureSurface.real)
+        curvatureStats.skewness += stats.skew(totalCurvatureSurface.real)
+
+        curvatureStats.moments += [ np.sum(totalCurvatureSurface    )/double(N), \
+                                    np.sum(totalCurvatureSurface**2.)/double(N), \
+                                    np.sum(totalCurvatureSurface**3.)/double(N) ]
+
+		### Compute the Fourier spectrum of the total surface
+        totalCurvatureSpectrum = ifft(totalCurvatureSurface)
 
         """
 		    Loop through the geometries in the GEOM structure
@@ -465,15 +561,12 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
                 slopeMin = Geom.xi_min[angle]
                 slopeMax = Geom.xi_max[angle]
 
-                #print "\t(slopeMin,slopeMax) = (%f,%f)" % (slopeMin,slopeMax)
-
                 #glint = np.array(((totalSlopeSurface.real > slopeMin) and (totalSlopeSurface.real < slopeMax)))
                 glint = np.double(totalSlopeSurface.real > slopeMin) * np.double(totalSlopeSurface.real < slopeMax)
 
                 ### Check if all glint elements vanish
                 result = np.where(glint)
 
-                #if ((result.squeeze()).shape == (0,)) :
                 #if (glint.sum() == 0.) :
                 if (np.shape(np.squeeze(np.where(glint))) == (0,)) :
 
@@ -500,6 +593,10 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 
                     ### Compute the glint moments
 
+                    glintStats[angle].mean     += stats.mean(glint.real)
+                    glintStats[angle].variance += stats.var( glint.real)
+                    glintStats[angle].skewness += stats.skew(glint.real)
+
                     glintStats[angle].moments += [ np.sum(glint.real    )/double(N), \
                                                    np.sum(glint.real**2.)/double(N), \
                                                    np.sum(glint.real**3.)/double(N) ]
@@ -521,21 +618,70 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 
     ### End realisation loop
 
-    #pl.subplot(2,2,3)
-    #pl.plot(Scale.k,2.*totalElevAvgPower/(delta_k*N_r),label="total")
-    #pl.xlim(0.,3.)
-    #pl.ylim(-0.0005,0.005)
-    #pl.legend()
-    #pl.title("Average Elevation Power Spectrum")
-    #pl.show()
+    
+    #left  = 0.125  # the left side of the subplots of the figure
+    #right = 0.9    # the right side of the subplots of the figure
+    #bottom = 0.1   # the bottom of the subplots of the figure
+    #top = 0.9      # the top of the subplots of the figure
+    #wspace = 0.2   # the amount of width reserved for blank space between subplots
+    #hspace = 0.2   # the amount of height reserved for white space between subplots
 
-    #pl.subplot(2,2,4)
-    #pl.plot(Scale.k,2.*totalSlopeAvgPower/(delta_k*N_r),label="total")
-    #pl.xlim(0.,3.)
+    pl.figure(figsize=(15,12))
+    pl.subplot(2,3,1)
+    pl.subplots_adjust(left=0.05,right=0.95,bottom=0.05,top=0.95,wspace=0.15,hspace=0.15)
+    pl.plot(Scale.k,ElevPower.primaryPower,label="primary")
+    pl.plot(Scale.k,ElevPower.nlPower,label="nonLinear")
+    pl.plot(Scale.k,ElevPower.totalPower,label="total")
+    pl.xlim(0.,13.)
+    pl.ylim(-0.0005,0.005)
+    pl.legend()
+    pl.title("Elevation Power Spectrum")
+    pl.show()
+
+    pl.subplot(2,3,2)
+    pl.plot(Scale.k,SlopePower.primaryPower,label="primary")
+    pl.plot(Scale.k,SlopePower.nlPower,label="nonLinear")
+    pl.plot(Scale.k,SlopePower.totalPower,label="total")
+    pl.xlim(0.,13.)
+    pl.ylim(-0.0005,0.005)
+    pl.legend()
+    pl.title("Slope Power Spectrum")
+    pl.show()
+
+    pl.subplot(2,3,3)
+    pl.plot(Scale.k,CurvaturePower.primaryPower,label="primary")
+    pl.plot(Scale.k,CurvaturePower.nlPower,label="nonLinear")
+    pl.plot(Scale.k,CurvaturePower.totalPower,label="total")
+    #pl.xlim(0.,53.)
     #pl.ylim(-0.0005,0.005)
-    #pl.legend()
-    #pl.title("Average Slope Power Spectrum")
-    #pl.show()
+    pl.legend()
+    pl.title("Curvature Power Spectrum")
+    pl.show()
+
+    pl.subplot(2,3,4)
+    pl.plot(Scale.k,2.*totalElevAvgPower/(delta_k*N_r),label="total")
+    pl.xlim(0.,13.)
+    pl.ylim(-0.0005,0.005)
+    pl.legend()
+    pl.title("Average Elevation Power Spectrum")
+    pl.show()
+
+    pl.subplot(2,3,5)
+    pl.plot(Scale.k,2.*totalSlopeAvgPower/(delta_k*N_r),label="total")
+    pl.xlim(0.,13.)
+    pl.ylim(-0.0005,0.005)
+    pl.legend()
+    pl.title("Average Slope Power Spectrum")
+    pl.show()
+
+    pl.subplot(2,3,6)
+    pl.plot(Scale.k,2.*totalCurvatureAvgPower/(delta_k*N_r),label="total")
+    #pl.xlim(0.,53.)
+    #pl.ylim(-0.0005,0.005)
+    pl.legend()
+    pl.title("Average Curvature Power Spectrum")
+    pl.show()
+
 
     print ""
     print "AngleRuns:    ",angleRuns," ... for total of ", \
@@ -546,10 +692,56 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
     N_r = N_r_cum
     print  "Final N_r_cum = ",N_r_cum
 
+    """
+        Have a look at the scipy calculated stats
+    """
+    elevStats.mean     /= double(N_runs)
+    elevStats.variance /= double(N_runs)
+    elevStats.skewness /= double(N_runs)
+
+    slopeStats.mean     /= double(N_runs)
+    slopeStats.variance /= double(N_runs)
+    slopeStats.skewness /= double(N_runs)
+
+    curvatureStats.mean     /= double(N_runs)
+    curvatureStats.variance /= double(N_runs)
+    curvatureStats.skewness /= double(N_runs)
+
+    for geoms in np.arange(Geom.N_angles) :
+        glintStats[geoms].mean     /= double(angleRunsCum[geoms])
+        glintStats[geoms].variance /= double(angleRunsCum[geoms])
+        glintStats[geoms].skewness /= double(angleRunsCum[geoms])
+
+    print "\nElevation mean %10.6e" % elevStats.mean
+    print "Elevation stdev %10.6e" % sqrt(elevStats.variance)
+    print "Elevation variance %10.6e" % elevStats.variance
+    print "Elevation skewness %10.6e" % elevStats.skewness
+
+    print "\nSlope mean %10.6e" % slopeStats.mean
+    print "Slope stdev %10.6e" % sqrt(slopeStats.variance)
+    print "Slope variance %10.6e" % slopeStats.variance
+    print "Slope skewness %10.6e" % slopeStats.skewness
+
+    print "\nCurvature mean %10.6e" % curvatureStats.mean
+    print "Curvature stdev %10.6e" % sqrt(curvatureStats.variance)
+    print "Curvature variance %10.6e" % curvatureStats.variance
+    print "Curvature skewness %10.6e" % curvatureStats.skewness
+
+    for geoms in np.arange(Geom.N_angles) :
+        print "\nAngle ",geoms,"..."
+        print "\n\tGlint stdev %10.6e"   % glintStats[geoms].mean
+        print "\tGlint  variance %10.6e" % glintStats[geoms].variance
+        print "\tGlint  skewness %10.6e" % glintStats[geoms].skewness
+
+    """
+        Compute the moments and cumulants our way
+    """
     elevStats.moments /= double(N_runs)
     elevStats.cumulantsFromMoments()
     slopeStats.moments /= double(N_runs)
     slopeStats.cumulantsFromMoments()
+    curvatureStats.moments /= double(N_runs)
+    curvatureStats.cumulantsFromMoments()
     for geoms in np.arange(Geom.N_angles) :
         glintStats[geoms].moments /= double(angleRunsCum[geoms])
         glintStats[geoms].cumulantsFromMoments()
