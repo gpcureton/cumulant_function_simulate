@@ -7,6 +7,7 @@ from numpy import float64 as double
 import matplotlib as mpl
 from matplotlib import pylab as pl
 from scipy import stats as stats
+import time
 
 from elevPowerSpectrum import phillips_elev_spectrum
 
@@ -335,30 +336,30 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
         Plot a single instance of the elevation, slope, curvature and glint, for
         comparison purposes.
     """
-    pl.figure(figsize=(12,8))
-    pl.subplot(3,1,1)
-    pl.subplots_adjust(left=0.05,right=0.95,bottom=0.05,top=0.95,wspace=0.15,hspace=0.15)
-    pl.plot(Scale.x,totalElevSurface.real,label="Elevation")
+    #pl.figure(figsize=(12,8))
+    #pl.subplot(3,1,1)
+    #pl.subplots_adjust(left=0.05,right=0.95,bottom=0.05,top=0.95,wspace=0.15,hspace=0.15)
+    #pl.plot(Scale.x,totalElevSurface.real,label="Elevation")
     #pl.xlim(11.,12.)
     #pl.ylim(-0.0005,0.005)
-    pl.legend()
-    pl.show()
+    #pl.legend()
+    #pl.show()
 
-    pl.subplot(3,1,2)
-    pl.plot(Scale.x,totalSlopeSurface.real,label="Slope")
-    pl.plot(Scale.x[:-1],np.diff(totalElevSurface.real,n=1)/delta_x,label="Slope (diff)")
+    #pl.subplot(3,1,2)
+    #pl.plot(Scale.x,totalSlopeSurface.real,label="Slope")
+    #pl.plot(Scale.x[:-1],np.diff(totalElevSurface.real,n=1)/delta_x,label="Slope (diff)")
     #pl.xlim(11.,12.)
     #pl.ylim(-0.0005,0.005)
-    pl.legend()
-    pl.show()
+    #pl.legend()
+    #pl.show()
 
-    pl.subplot(3,1,3)
-    pl.plot(Scale.x,totalCurvatureSurface,label="Curvature")
-    pl.plot(Scale.x[1:-1],np.diff(totalElevSurface.real,n=2)/(delta_x**2.),label="Curvature (diff)")
+    #pl.subplot(3,1,3)
+    #pl.plot(Scale.x,totalCurvatureSurface,label="Curvature")
+    #pl.plot(Scale.x[1:-1],np.diff(totalElevSurface.real,n=2)/(delta_x**2.),label="Curvature (diff)")
     #pl.xlim(11.,12.)
     #pl.ylim(-0.0005,0.005)
-    pl.legend()
-    pl.show()
+    #pl.legend()
+    #pl.show()
 
     """
 	    Define the glint, glint spectrum and glint power
@@ -390,13 +391,20 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
     angleRuns = np.zeros(Geom.N_angles,np.long)
     angleRunsCum = np.zeros(Geom.N_angles,np.long)
 
-    #while (N_r_cum < N_r) :
+    time.sleep(3.)
+    t1 = time.time()
+
     while (angleRuns.sum() < N_r*Geom.N_angles) :
 
         N_r_cum += 1
 
         print "\n>>>>>>>>>>>>>>>>>>>>>\n"
-        print "Computing realisation: %d" % (N_r_cum)
+        t2 = time.time()
+        #print "Elapsed time = ",t2-t1
+        if ((t2-t1) > 2.):
+            print "Computing realisation: %d at time %f" % (N_r_cum,(t2-t1))
+            t1 = time.time()
+
 
 		### Compute the independent phases for this realisation
         primaryElevPhase = np.random.rand(N)*2.*pi - pi # RANDOMU(seed,N)*2.D*!DPI - !DPI
@@ -404,7 +412,7 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 
         ### Apply the phase correlations between the free and bound wavenumbers for the nonlinear
         ### component, if (nlSwitch==1)
-        if (nlSwitch) :
+        if (nlSwitch==1) :
             nlElevPhase[NLCoupling.bound] = primaryElevPhase[NLCoupling.free1] + \
                     primaryElevPhase[NLCoupling.free2]
 
@@ -550,8 +558,8 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 
             if (angleRuns[angle] < N_r) :
 
-                print "\n\tProcessing angle ",angle," for run ",angleRuns[angle]+1, \
-                " --> attempt ",angleRunsCum[angle]+1
+                #print "\n\tProcessing angle ",angle," for run ",angleRuns[angle]+1, \
+                #" --> attempt ",angleRunsCum[angle]+1
 
                 """
                     Compute the glint realisation from the slope
@@ -570,9 +578,9 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
                 #if (glint.sum() == 0.) :
                 if (np.shape(np.squeeze(np.where(glint))) == (0,)) :
 
-                    print "\tZero-glint realisation angle ",angle, \
-                    " for run ",angleRuns[angle]+1, \
-                    " --> attempt ",angleRunsCum[angle]+1
+                    #print "\tZero-glint realisation angle ",angle, \
+                    #" for run ",angleRuns[angle]+1, \
+                    #" --> attempt ",angleRunsCum[angle]+1
 
                     ### There are no glints, add to attempts count
 
@@ -584,9 +592,9 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 
                 else :
 
-                    print "\tSuccessful realisation angle ",angle, \
-                    " for run ",angleRuns[angle] + 1, \
-                    " --> attempt ",angleRunsCum[angle]+1
+                    #print "\tSuccessful realisation angle ",angle, \
+                    #" for run ",angleRuns[angle] + 1, \
+                    #" --> attempt ",angleRunsCum[angle]+1
 
                     angleRuns[angle] += 1
                     angleRunsCum[angle] += 1
@@ -632,7 +640,7 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
     pl.plot(Scale.k,ElevPower.primaryPower,label="primary")
     pl.plot(Scale.k,ElevPower.nlPower,label="nonLinear")
     pl.plot(Scale.k,ElevPower.totalPower,label="total")
-    pl.xlim(0.,13.)
+    pl.xlim(0.,5.)
     pl.ylim(-0.0005,0.005)
     pl.legend()
     pl.title("Elevation Power Spectrum")
@@ -642,7 +650,7 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
     pl.plot(Scale.k,SlopePower.primaryPower,label="primary")
     pl.plot(Scale.k,SlopePower.nlPower,label="nonLinear")
     pl.plot(Scale.k,SlopePower.totalPower,label="total")
-    pl.xlim(0.,13.)
+    pl.xlim(0.,5.)
     pl.ylim(-0.0005,0.005)
     pl.legend()
     pl.title("Slope Power Spectrum")
@@ -652,15 +660,15 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
     pl.plot(Scale.k,CurvaturePower.primaryPower,label="primary")
     pl.plot(Scale.k,CurvaturePower.nlPower,label="nonLinear")
     pl.plot(Scale.k,CurvaturePower.totalPower,label="total")
-    #pl.xlim(0.,53.)
-    #pl.ylim(-0.0005,0.005)
+    pl.xlim(0.,5.)
+    pl.ylim(-0.0005,0.005)
     pl.legend()
     pl.title("Curvature Power Spectrum")
     pl.show()
 
     pl.subplot(2,3,4)
     pl.plot(Scale.k,2.*totalElevAvgPower/(delta_k*N_r),label="total")
-    pl.xlim(0.,13.)
+    pl.xlim(0.,5.)
     pl.ylim(-0.0005,0.005)
     pl.legend()
     pl.title("Average Elevation Power Spectrum")
@@ -668,7 +676,7 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 
     pl.subplot(2,3,5)
     pl.plot(Scale.k,2.*totalSlopeAvgPower/(delta_k*N_r),label="total")
-    pl.xlim(0.,13.)
+    pl.xlim(0.,5.)
     pl.ylim(-0.0005,0.005)
     pl.legend()
     pl.title("Average Slope Power Spectrum")
@@ -676,8 +684,8 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 
     pl.subplot(2,3,6)
     pl.plot(Scale.k,2.*totalCurvatureAvgPower/(delta_k*N_r),label="total")
-    #pl.xlim(0.,53.)
-    #pl.ylim(-0.0005,0.005)
+    pl.xlim(0.,5.)
+    pl.ylim(-0.0005,0.005)
     pl.legend()
     pl.title("Average Curvature Power Spectrum")
     pl.show()
@@ -783,6 +791,45 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
         print "\n\tGlint first cumulant  %10.6e" % glintStats[geoms].cumulants[0]
         print "\tGlint second cumulant %10.6e" % glintStats[geoms].cumulants[1]
         print "\tGlint third cumulant  %10.6e" % glintStats[geoms].cumulants[2]
+
+    """
+        Compute the average covariance functions.
+    """
+    elevSecondMomentFunction =  fft(totalElevAvgPower)
+    elevSecondMomentFunction /= elevSecondMomentFunction.real[0]
+    slopeSecondMomentFunction =  fft(totalSlopeAvgPower)
+    slopeSecondMomentFunction /= slopeSecondMomentFunction.real[0]
+
+    pl.figure(figsize=(12,8))
+    pl.subplot(2,1,1)
+    pl.subplots_adjust(left=0.05,right=0.95,bottom=0.05,top=0.95,wspace=0.15,hspace=0.15)
+
+    pl.plot(Scale.x,elevSecondMomentFunction,label="elevation")
+    pl.xlim(0.,50.)
+    pl.ylim(-0.0005,0.005)
+    pl.legend()
+    pl.title("Elevation second moment function")
+    pl.show()
+
+    pl.subplot(2,1,2)
+    pl.plot(Scale.x,slopeSecondMomentFunction,label="slope")
+    pl.xlim(0.,50.)
+    pl.ylim(-0.2,0.2)
+    pl.legend()
+    pl.title("Slope second moment function")
+    pl.show()
+
+    glintSecondMomentFunction = np.zeros((Geom.N_angles,N),dtype=double)
+    for geoms in np.arange(Geom.N_angles) :
+        glintSecondMomentFunction[geoms] = fft(totalGlintAvgPower[geoms])
+        glintSecondMomentFunction[geoms] /= glintSecondMomentFunction[geoms][0]
+
+    pl.figure()
+    for geoms in np.arange(Geom.N_angles) :
+        pl.plot(Scale.x,glintSecondMomentFunction[geoms])
+    pl.xlim(0.,50.)
+    pl.ylim(0.,0.02)
+    pl.show()
 
 """
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
