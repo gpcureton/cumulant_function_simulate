@@ -1,6 +1,6 @@
 import sys, time, string, getopt, copy
 import numpy as np
-from numpy import pi,sin,cos,tan,sqrt,abs
+from numpy import pi,sin,cos,tan,sqrt,abs,exp
 from numpy.fft import fft,ifft
 from numpy import float64 as double
 
@@ -336,30 +336,55 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
         Plot a single instance of the elevation, slope, curvature and glint, for
         comparison purposes.
     """
-    #pl.figure(figsize=(12,8))
-    #pl.subplot(3,1,1)
-    #pl.subplots_adjust(left=0.05,right=0.95,bottom=0.05,top=0.95,wspace=0.15,hspace=0.15)
-    #pl.plot(Scale.x,totalElevSurface.real,label="Elevation")
+    pl.figure(figsize=(12,10))
+    pl.subplot(4,1,1)
+    pl.subplots_adjust(left=0.05,right=0.95,bottom=0.05,top=0.95,wspace=0.15,hspace=0.15)
+    pl.plot(Scale.x,totalElevSurface.real,label="Elevation")
     #pl.xlim(11.,12.)
     #pl.ylim(-0.0005,0.005)
-    #pl.legend()
-    #pl.show()
+    pl.legend()
+    pl.show()
 
-    #pl.subplot(3,1,2)
-    #pl.plot(Scale.x,totalSlopeSurface.real,label="Slope")
+    pl.subplot(4,1,2)
+    slopeMin = Geom.xi_min[1]
+    slopeMax = Geom.xi_max[1]
+    pl.plot(Scale.x,totalSlopeSurface.real,label="Slope")
+    pl.plot(Scale.x,np.ones(N)*slopeMin,label="Slope Min")
+    pl.plot(Scale.x,np.ones(N)*slopeMax,label="Slope Max")
+    #pl.plot(Scale.x,np.gradient(totalElevSurface.real,delta_x),label="Slope (gradient)")
+    #pl.plot(Scale.x[:-1],np.diff(totalElevSurface.real,n=1)/delta_x,label="Slope (diff)")
     #pl.plot(Scale.x[:-1],np.diff(totalElevSurface.real,n=1)/delta_x,label="Slope (diff)")
     #pl.xlim(11.,12.)
     #pl.ylim(-0.0005,0.005)
-    #pl.legend()
-    #pl.show()
+    pl.legend()
+    pl.show()
 
-    #pl.subplot(3,1,3)
-    #pl.plot(Scale.x,totalCurvatureSurface,label="Curvature")
-    #pl.plot(Scale.x[1:-1],np.diff(totalElevSurface.real,n=2)/(delta_x**2.),label="Curvature (diff)")
+    pl.subplot(4,1,3)
+    glint = np.double(totalSlopeSurface.real > slopeMin) * np.double(totalSlopeSurface.real < slopeMax)
+    filterWid=64
+    convX = np.linspace(-5.,5.,filterWid)
+    convFilter = exp(-0.5*(convX**2.)/(0.4))
+    glintConv = np.convolve(glint,convFilter,mode='same')
+    glintConv = (glintConv<=1.)*glintConv + (glintConv>1.)
+    print np.shape(glintConv)
+    print np.shape(Scale.x[:-(filterWid-1)])
+    pl.plot(Scale.x,glint.real,label="Glint")
+    pl.plot(Scale.x,glintConv,label="Convolved Glint")
+    #pl.xlim(11.,12.)
+    pl.ylim(-0.2,1.2)
+    pl.legend()
+    pl.show()
+
+    pl.subplot(4,1,4)
+    pl.plot(Scale.x,totalCurvatureSurface,label=r"$\eta^{''}(x)$")
+    pl.plot(Scale.x,np.gradient(np.gradient(totalElevSurface.real))/(delta_x*delta_x),label=r"$\eta^{''}(x)$ (gradient)")
+    pl.plot(Scale.x[1:-1],np.diff(totalElevSurface.real,n=2)/(delta_x**2.),label="$\eta^{''}(x)$ (diff)")
+    #pl.plot(Scale.x,totalCurvatureSurface/(sqrt(1. + totalSlopeSurface**2.)**3.),label=r"$\kappa(x)$")
+    #pl.plot(Scale.x[1:-1],(np.diff(totalElevSurface.real,n=2)/(delta_x**2.),label="Curvature (diff)")
     #pl.xlim(11.,12.)
     #pl.ylim(-0.0005,0.005)
-    #pl.legend()
-    #pl.show()
+    pl.legend()
+    pl.show()
 
     """
 	    Define the glint, glint spectrum and glint power
@@ -398,10 +423,10 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 
         N_r_cum += 1
 
-        print "\n>>>>>>>>>>>>>>>>>>>>>\n"
         t2 = time.time()
         #print "Elapsed time = ",t2-t1
-        if ((t2-t1) > 2.):
+        if ((t2-t1) > 1.):
+            print "\n>>>>>>>>>>>>>>>>>>>>>\n"
             print "Computing realisation: %d at time %f" % (N_r_cum,(t2-t1))
             t1 = time.time()
 
@@ -465,7 +490,7 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
         """
 		
         ### Calculate the slope spectrum for the free waves
-        primarySlopeSpectrum = primarySlopeAmplitude*(-sin(primaryElevPhase) + 1j*cos(primaryElevPhase))
+        primarySlopeSpectrum = primarySlopeAmplitude*(sin(primaryElevPhase) - 1j*cos(primaryElevPhase))
         #primarySlopeSpectrum += 0.00001*MAX(totalSlopeAmplitude)*RANDOMN(seed,N)
         primarySlopeSpectrum[N/2+1:] = np.conjugate(primarySlopeSpectrum[1 : N/2][::-1])
 
@@ -508,7 +533,7 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
         """
 		
         ### Calculate the curvature spectrum for the free waves
-        primaryCurvatureSpectrum = primaryCurvatureAmplitude*(-sin(primaryElevPhase) + 1j*cos(primaryElevPhase))
+        primaryCurvatureSpectrum = primaryCurvatureAmplitude*(-cos(primaryElevPhase) - 1j*sin(primaryElevPhase))
         #primaryCurvatureSpectrum += 0.00001*MAX(totalCurvatureAmplitude)*RANDOMN(seed,N)
         primaryCurvatureSpectrum[N/2+1:] = np.conjugate(primaryCurvatureSpectrum[1 : N/2][::-1])
 
@@ -518,9 +543,16 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 
         ### Compute specific realisation of the free and bound waves. Nonlinear curvature
         ### (totalCurvatureSurface) is sum of free and bound waves.
-        primaryCurvatureSurface = fft(primaryCurvatureSpectrum)                    ### Free waves
-        nlCurvatureSurface = fft(nlCurvatureSpectrum)                              ### Bound waves
+        primaryCurvatureSurface = fft(primaryCurvatureSpectrum).real                    ### Free waves
+        #primaryCurvatureSurface *= 1./((1. + primarySlopeSurface**2.)**1.5)
+
+        nlCurvatureSurface = fft(nlCurvatureSpectrum).real                              ### Bound waves
+        #nlCurvatureSurface *= 1./((1. + nlSlopeSurface**2.)**1.5)
+
         totalCurvatureSurface = primaryCurvatureSurface + nlCurvatureSurface       ### Total surface
+
+        #totalCurvatureSurface *= 1./(    (1. + totalSlopeSurface**2.)**1.5)
+        #totalCurvatureSurface *= 1./(sqrt(1. + totalSlopeSurface**2.)**3.)       ### Total surface
 
         ### Compute the average power spectrum for free, bound and total elevation waves
         primaryCurvatureAvgPower += abs(ifft(primaryCurvatureSurface))**2.
@@ -720,26 +752,33 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
         glintStats[geoms].variance /= double(angleRunsCum[geoms])
         glintStats[geoms].skewness /= double(angleRunsCum[geoms])
 
-    print "\nElevation mean %10.6e" % elevStats.mean
-    print "Elevation stdev %10.6e" % sqrt(elevStats.variance)
-    print "Elevation variance %10.6e" % elevStats.variance
-    print "Elevation skewness %10.6e" % elevStats.skewness
+    print "\nPython Elevation mean %10.6e" % elevStats.mean
+    print "Python Elevation stdev %10.6e" % sqrt(elevStats.variance)
+    print "Python Elevation variance %10.6e" % elevStats.variance
+    print "Python Elevation skewness %10.6e" % elevStats.skewness
 
-    print "\nSlope mean %10.6e" % slopeStats.mean
-    print "Slope stdev %10.6e" % sqrt(slopeStats.variance)
-    print "Slope variance %10.6e" % slopeStats.variance
-    print "Slope skewness %10.6e" % slopeStats.skewness
+    print "\nPython Slope mean %10.6e" % slopeStats.mean
+    print "Python Slope stdev %10.6e" % sqrt(slopeStats.variance)
+    print "Python Slope variance %10.6e" % slopeStats.variance
+    print "Python Slope skewness %10.6e" % slopeStats.skewness
 
-    print "\nCurvature mean %10.6e" % curvatureStats.mean
-    print "Curvature stdev %10.6e" % sqrt(curvatureStats.variance)
-    print "Curvature variance %10.6e" % curvatureStats.variance
-    print "Curvature skewness %10.6e" % curvatureStats.skewness
+    print "\nPython Curvature mean %10.6e" % curvatureStats.mean
+    print "Python Curvature stdev %10.6e" % sqrt(curvatureStats.variance)
+    print "Python Curvature variance %10.6e" % curvatureStats.variance
+    print "Python Curvature skewness %10.6e" % curvatureStats.skewness
 
+    print "\nPython Glint mean, variance and skewness ...\n"
     for geoms in np.arange(Geom.N_angles) :
-        print "\nAngle ",geoms,"..."
-        print "\n\tGlint stdev %10.6e"   % glintStats[geoms].mean
-        print "\tGlint  variance %10.6e" % glintStats[geoms].variance
-        print "\tGlint  skewness %10.6e" % glintStats[geoms].skewness
+        print "\tAngle %1d:\t\t%10.6e\t%10.6e\t%10.6e" % (geoms,\
+            glintStats[geoms].mean,\
+            glintStats[geoms].variance,\
+            glintStats[geoms].skewness)
+
+    #for geoms in np.arange(Geom.N_angles) :
+        #print "\nAngle ",geoms,"..."
+        #print "\n\tGlint stdev %10.6e"   % glintStats[geoms].mean
+        #print "\tGlint  variance %10.6e" % glintStats[geoms].variance
+        #print "\tGlint  skewness %10.6e" % glintStats[geoms].skewness
 
     """
         Compute the moments and cumulants our way
@@ -778,19 +817,34 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
     print "\nSlope mean %10.6e" % slopeStats.mean
     print "Slope stdev %10.6e" % sqrt(slopeStats.variance)
     print "Slope variance %10.6e" % slopeStats.variance
-    print "Slope skewness %10.6e" % slopeStats.skewness
+    print "Slope skewness %10.6e\n" % slopeStats.skewness
 
-    for geoms in np.arange(Geom.N_angles) :
-        print "\nAngle ",geoms,"..."
-        print "\n\tGlint first moment  %10.6e" % glintStats[geoms].moments[0]
-        print "\tGlint second moment %10.6e" % glintStats[geoms].moments[1]
-        print "\tGlint third moment  %10.6e" % glintStats[geoms].moments[2]
+    print "\nCurvature first moment %10.6e" % curvatureStats.moments[0]
+    print "Curvature second moment %10.6e" % curvatureStats.moments[1]
+    print "Curvature third moment %10.6e" % curvatureStats.moments[2]
 
+    print "\nCurvature first cumulant %10.6e" % curvatureStats.cumulants[0]
+    print "Curvature second cumulant %10.6e" % curvatureStats.cumulants[1]
+    print "Curvature third cumulant %10.6e" % curvatureStats.cumulants[2]
+
+    print "\nCurvature mean %10.6e" % curvatureStats.mean
+    print "Curvature stdev %10.6e" % sqrt(curvatureStats.variance)
+    print "Curvature variance %10.6e" % curvatureStats.variance
+    print "Curvature skewness %10.6e\n" % curvatureStats.skewness
+
+    print "Glint moments ...\n"
     for geoms in np.arange(Geom.N_angles) :
-        print "\nAngle ",geoms,"..."
-        print "\n\tGlint first cumulant  %10.6e" % glintStats[geoms].cumulants[0]
-        print "\tGlint second cumulant %10.6e" % glintStats[geoms].cumulants[1]
-        print "\tGlint third cumulant  %10.6e" % glintStats[geoms].cumulants[2]
+        print "\tAngle %1d:\t\t%10.6e\t%10.6e\t%10.6e" % (geoms,\
+            glintStats[geoms].moments[0],\
+            glintStats[geoms].moments[1],\
+            glintStats[geoms].moments[2])
+
+    print "\nGlint cumulants ...\n"
+    for geoms in np.arange(Geom.N_angles) :
+        print "\tAngle %1d:\t\t%10.6e\t%10.6e\t%10.6e" % (geoms,\
+            glintStats[geoms].cumulants[0],\
+            glintStats[geoms].cumulants[1],\
+            glintStats[geoms].cumulants[2])
 
     """
         Compute the average covariance functions.
@@ -801,17 +855,17 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
     slopeSecondMomentFunction /= slopeSecondMomentFunction.real[0]
 
     pl.figure(figsize=(12,8))
-    pl.subplot(2,1,1)
+    pl.subplot(3,1,1)
     pl.subplots_adjust(left=0.05,right=0.95,bottom=0.05,top=0.95,wspace=0.15,hspace=0.15)
 
     pl.plot(Scale.x,elevSecondMomentFunction,label="elevation")
     pl.xlim(0.,50.)
-    pl.ylim(-0.0005,0.005)
+    #pl.ylim(-0.0005,0.005)
     pl.legend()
     pl.title("Elevation second moment function")
     pl.show()
 
-    pl.subplot(2,1,2)
+    pl.subplot(3,1,2)
     pl.plot(Scale.x,slopeSecondMomentFunction,label="slope")
     pl.xlim(0.,50.)
     pl.ylim(-0.2,0.2)
@@ -824,7 +878,7 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
         glintSecondMomentFunction[geoms] = fft(totalGlintAvgPower[geoms])
         glintSecondMomentFunction[geoms] /= glintSecondMomentFunction[geoms][0]
 
-    pl.figure()
+    pl.subplot(3,1,3)
     for geoms in np.arange(Geom.N_angles) :
         pl.plot(Scale.x,glintSecondMomentFunction[geoms])
     pl.xlim(0.,50.)
