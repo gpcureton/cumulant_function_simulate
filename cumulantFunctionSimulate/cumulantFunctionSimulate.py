@@ -331,15 +331,16 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
     pl.show()
 
     pl.subplot(4,1,2)
-    slopeMin = Geom.xi_min[1]
-    slopeMax = Geom.xi_max[1]
+    testAng = 0
+    slopeMin = Geom.xi_min[testAng]
+    slopeMax = Geom.xi_max[testAng]
     pl.plot(Scale.x,totalSlopeSurface.real,label="Slope")
     pl.plot(Scale.x,np.ones(N)*slopeMin,label="Slope Min")
     pl.plot(Scale.x,np.ones(N)*slopeMax,label="Slope Max")
     #pl.plot(Scale.x,np.gradient(totalElevSurface.real,delta_x),label="Slope (gradient)")
     #pl.plot(Scale.x[:-1],np.diff(totalElevSurface.real,n=1)/delta_x,label="Slope (diff)")
     #pl.plot(Scale.x[:-1],np.diff(totalElevSurface.real,n=1)/delta_x,label="Slope (diff)")
-    #pl.xlim(11.,12.)
+    pl.xlim(20.,30.)
     #pl.ylim(-0.0005,0.005)
     pl.legend()
     pl.grid(b=True)
@@ -347,16 +348,24 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 
     pl.subplot(4,1,3)
     glint = np.double(totalSlopeSurface.real > slopeMin) * np.double(totalSlopeSurface.real < slopeMax)
-    filterWid=64
-    convX = np.linspace(-5.,5.,filterWid)
-    convFilter = exp(-0.5*(convX**2.)/(0.4))
+    filterLen=64
+    filterStdev = 0.44
+    convX = np.linspace(-5.,5.,filterLen)
+    convFilter = exp(-0.5*(convX**2.)/(filterStdev**2.))
     glintConv = np.convolve(glint,convFilter,mode='same')
     glintConv = (glintConv<=1.)*glintConv + (glintConv>1.)
     print np.shape(glintConv)
-    print np.shape(Scale.x[:-(filterWid-1)])
-    pl.plot(Scale.x,glint.real,label="Glint")
-    pl.plot(Scale.x,glintConv,label="Convolved Glint")
-    #pl.xlim(11.,12.)
+    print np.shape(Scale.x[:-(filterLen-1)])
+    #pl.plot(Scale.x,glint.real,label="Glint")
+    #pl.plot(Scale.x,glintConv,label="Convolved Glint")
+    print "Central slope is ",Geom.xi_0[testAng]
+    SLmag,SLstdev = 0.5,1./sqrt(200.)
+    #Skylight = cos(totalSlopeSurface.real - Geom.xi_0[testAng])
+    Skylight = 0.5*exp(-0.5*((totalSlopeSurface.real - Geom.xi_0[testAng])**2.)/(SLstdev**2.))
+    #pl.plot(Scale.x,Skylight,label="Skylight")
+    combGlint = (glintConv > Skylight)*glintConv + (glintConv < Skylight)*Skylight
+    pl.plot(Scale.x,combGlint,label="Combined Glint")
+    #pl.xlim(20.,30.)
     pl.ylim(-0.2,1.2)
     pl.legend()
     pl.show()
@@ -372,6 +381,8 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
     pl.legend()
     pl.grid(b=True)
     pl.show()
+
+    return
 
     """
 	    Define the glint, glint spectrum and glint power
@@ -590,6 +601,10 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 
                 #glint = np.array(((totalSlopeSurface.real > slopeMin) and (totalSlopeSurface.real < slopeMax)))
                 glint = np.double(totalSlopeSurface.real > slopeMin) * np.double(totalSlopeSurface.real < slopeMax)
+                glintConv = np.convolve(glint,convFilter,mode='same')
+                glintConv = (glintConv<=1.)*glintConv + (glintConv>1.)
+                Skylight = 0.5*exp(-0.5*((totalSlopeSurface.real - Geom.xi_0[testAng])**2.)/(SLstdev**2.))
+                combGlint = (glintConv > Skylight)*glintConv + (glintConv < Skylight)*Skylight
 
                 ### Check if all glint elements vanish
                 result = np.where(glint)
