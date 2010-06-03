@@ -127,17 +127,11 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 
     phillips_elev_spectrum(Scale,ElevPower,NLCoupling,specExp)
 
-    print '\nFirst component indicies for free waves ...'
-    print NLCoupling.free1
-    print Scale.k[NLCoupling.free1]/Scale.k_N
+    print '\nFirst component indicies for free waves ...',NLCoupling.free1,Scale.k[NLCoupling.free1]/Scale.k_N
 
-    print 'Second component indicies for free waves ...'
-    print NLCoupling.free2
-    print Scale.k[NLCoupling.free2]/Scale.k_N
+    print 'Second component indicies for free waves ...',NLCoupling.free2,Scale.k[NLCoupling.free2]/Scale.k_N
 
-    print 'Indicies for bound waves...'
-    print NLCoupling.bound
-    print Scale.k[NLCoupling.bound]/Scale.k_N
+    print 'Indicies for bound waves...',NLCoupling.bound,Scale.k[NLCoupling.bound]/Scale.k_N
 
     totalElevPower = ElevPower.totalPower
     primaryElevPower = ElevPower.primaryPower
@@ -148,14 +142,11 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
     print "Elevation variance from power vector: %10.6f meters^{2} " % \
         (np.sum(totalElevPower)*delta_k)
 
-    print "\nTotal elevation power at the bound wavenumbers..."
-    print totalElevPower[NLCoupling.bound]
-    print "Free elevation power at the bound wavenumbers..."
-    print ElevPower.primaryPower[NLCoupling.bound]
-    print "Bound elevation power at the bound wavenumbers..."
-    print ElevPower.nlPower[NLCoupling.bound]
-    print "Ratio of bound to free elevation power at the bound wavenumbers..."
-    print ElevPower.nlPower[NLCoupling.bound]/totalElevPower[NLCoupling.bound]
+    print "\nTotal elevation power at the bound wavenumbers...",totalElevPower[NLCoupling.bound]
+    print "Free elevation power at the bound wavenumbers...",ElevPower.primaryPower[NLCoupling.bound]
+    print "Bound elevation power at the bound wavenumbers...",ElevPower.nlPower[NLCoupling.bound]
+    print "Ratio of bound to free elevation power at the bound wavenumbers...",\
+            ElevPower.nlPower[NLCoupling.bound]/totalElevPower[NLCoupling.bound]
 
     """
         Initialise the slope power spectrum structure
@@ -174,14 +165,11 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
     print "Slope variance from power vector: %10.6f meters^{2} " % \
         (np.sum(totalSlopePower)*delta_k)
 
-    print "\nTotal slope power at the bound wavenumbers..."
-    print totalSlopePower[NLCoupling.bound]
-    print "Free slope power at the bound wavenumbers..."
-    print SlopePower.primaryPower[NLCoupling.bound]
-    print "Bound slope power at the bound wavenumbers..."
-    print SlopePower.nlPower[NLCoupling.bound]
-    print "Ratio of bound to free slope power at the bound wavenumbers..."
-    print SlopePower.nlPower[NLCoupling.bound]/totalSlopePower[NLCoupling.bound]
+    print "\nTotal slope power at the bound wavenumbers...",totalSlopePower[NLCoupling.bound]
+    print "Free slope power at the bound wavenumbers...",SlopePower.primaryPower[NLCoupling.bound]
+    print "Bound slope power at the bound wavenumbers...",SlopePower.nlPower[NLCoupling.bound]
+    print "Ratio of bound to free slope power at the bound wavenumbers...",\
+            SlopePower.nlPower[NLCoupling.bound]/totalSlopePower[NLCoupling.bound]
 
     """
         Initialise the curvature power spectrum structure
@@ -200,14 +188,11 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
     print "Curvature variance from power vector: %10.6f meters^{-2}" % \
         (np.sum(totalCurvaturePower)*delta_k)
 
-    print "\nTotal curvature power at the bound wavenumbers..."
-    print totalCurvaturePower[NLCoupling.bound]
-    print "Free curvature power at the bound wavenumbers..."
-    print CurvaturePower.primaryPower[NLCoupling.bound]
-    print "Bound curvature power at the bound wavenumbers..."
-    print CurvaturePower.nlPower[NLCoupling.bound]
-    print "Ratio of bound to free curvature power at the bound wavenumbers..."
-    print CurvaturePower.nlPower[NLCoupling.bound]/totalCurvaturePower[NLCoupling.bound]
+    print "\nTotal curvature power at the bound wavenumbers...",totalCurvaturePower[NLCoupling.bound]
+    print "Free curvature power at the bound wavenumbers...",CurvaturePower.primaryPower[NLCoupling.bound]
+    print "Bound curvature power at the bound wavenumbers...",CurvaturePower.nlPower[NLCoupling.bound]
+    print "Ratio of bound to free curvature power at the bound wavenumbers...",\
+            CurvaturePower.nlPower[NLCoupling.bound]/totalCurvaturePower[NLCoupling.bound]
 
     """
         Compute the total elevation amplitude, phase and spectrum,
@@ -357,6 +342,7 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
     #pl.xlim(11.,12.)
     #pl.ylim(-0.0005,0.005)
     pl.legend()
+    pl.grid(b=True)
     pl.show()
 
     pl.subplot(4,1,3)
@@ -377,13 +363,14 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 
     pl.subplot(4,1,4)
     pl.plot(Scale.x,totalCurvatureSurface,label=r"$\eta^{''}(x)$")
-    pl.plot(Scale.x,np.gradient(np.gradient(totalElevSurface.real))/(delta_x*delta_x),label=r"$\eta^{''}(x)$ (gradient)")
-    pl.plot(Scale.x[1:-1],np.diff(totalElevSurface.real,n=2)/(delta_x**2.),label="$\eta^{''}(x)$ (diff)")
+    #pl.plot(Scale.x,np.gradient(np.gradient(totalElevSurface.real))/(delta_x*delta_x),label=r"$\eta^{''}(x)$ (gradient)")
+    #pl.plot(Scale.x[1:-1],np.diff(totalElevSurface.real,n=2)/(delta_x**2.),label="$\eta^{''}(x)$ (diff)")
     #pl.plot(Scale.x,totalCurvatureSurface/(sqrt(1. + totalSlopeSurface**2.)**3.),label=r"$\kappa(x)$")
     #pl.plot(Scale.x[1:-1],(np.diff(totalElevSurface.real,n=2)/(delta_x**2.),label="Curvature (diff)")
     #pl.xlim(11.,12.)
     #pl.ylim(-0.0005,0.005)
     pl.legend()
+    pl.grid(b=True)
     pl.show()
 
     """
@@ -1819,4 +1806,6 @@ if __name__ == '__main__':
     specExp      = double(sys.argv[6])  
     nlSwitch     = int(sys.argv[7])  
 
+    pl.ioff()
     cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch)
+    pl.ion()
