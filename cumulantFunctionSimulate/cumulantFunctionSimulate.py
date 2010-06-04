@@ -321,16 +321,25 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
         Plot a single instance of the elevation, slope, curvature and glint, for
         comparison purposes.
     """
+
+    #left  = 0.125  # the left side of the subplots of the figure
+    #right = 0.9    # the right side of the subplots of the figure
+    #bottom = 0.1   # the bottom of the subplots of the figure
+    #top = 0.9      # the top of the subplots of the figure
+    #wspace = 0.2   # the amount of width reserved for blank space between subplots
+    #hspace = 0.2   # the amount of height reserved for white space between subplots
+
     pl.figure(figsize=(12,10))
-    pl.subplot(4,1,1)
     pl.subplots_adjust(left=0.05,right=0.95,bottom=0.05,top=0.95,wspace=0.15,hspace=0.15)
-    pl.plot(Scale.x,totalElevSurface.real,label="Elevation")
+
+    #pl.subplot(4,1,1)
+    #pl.plot(Scale.x,totalElevSurface.real,label="Elevation")
     #pl.xlim(11.,12.)
     #pl.ylim(-0.0005,0.005)
-    pl.legend()
-    pl.show()
+    #pl.legend()
+    #pl.show()
 
-    pl.subplot(4,1,2)
+    pl.subplot(4,1,1)
     testAng = 0
     slopeMin = Geom.xi_min[testAng]
     slopeMax = Geom.xi_max[testAng]
@@ -346,41 +355,77 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
     pl.grid(b=True)
     pl.show()
 
-    pl.subplot(4,1,3)
     glint = np.double(totalSlopeSurface.real > slopeMin) * np.double(totalSlopeSurface.real < slopeMax)
+
+    pl.subplot(4,1,2)
+    pl.plot(Scale.x,glint,label="Glint")
+    #pl.xlim(20.,30.)
+    pl.ylim(-0.2,1.2)
+    pl.grid(b=True)
+    pl.legend()
+    pl.show()
+
     filterLen=64
     filterStdev = 0.44
     convX = np.linspace(-5.,5.,filterLen)
     convFilter = exp(-0.5*(convX**2.)/(filterStdev**2.))
     glintConv = np.convolve(glint,convFilter,mode='same')
     glintConv = (glintConv<=1.)*glintConv + (glintConv>1.)
-    print np.shape(glintConv)
-    print np.shape(Scale.x[:-(filterLen-1)])
-    #pl.plot(Scale.x,glint.real,label="Glint")
-    #pl.plot(Scale.x,glintConv,label="Convolved Glint")
-    print "Central slope is ",Geom.xi_0[testAng]
     SLmag,SLstdev = 0.5,1./sqrt(200.)
-    #Skylight = cos(totalSlopeSurface.real - Geom.xi_0[testAng])
     Skylight = 0.5*exp(-0.5*((totalSlopeSurface.real - Geom.xi_0[testAng])**2.)/(SLstdev**2.))
-    #pl.plot(Scale.x,Skylight,label="Skylight")
     combGlint = (glintConv > Skylight)*glintConv + (glintConv < Skylight)*Skylight
+
+    pl.subplot(4,1,3)
     pl.plot(Scale.x,combGlint,label="Combined Glint")
     #pl.xlim(20.,30.)
     pl.ylim(-0.2,1.2)
+    pl.grid(b=True)
     pl.legend()
     pl.show()
 
+    threshold = 0.2
+    thresholdGlint = (combGlint >= threshold)*combGlint
+
     pl.subplot(4,1,4)
-    pl.plot(Scale.x,totalCurvatureSurface,label=r"$\eta^{''}(x)$")
+    pl.plot(Scale.x,thresholdGlint,label="Thresholded Glint")
+    #pl.xlim(11.,12.)
+    pl.ylim(-0.2,1.2)
+    pl.legend()
+    pl.grid(b=True)
+    pl.show()
+
+    bins = np.linspace(0.,1.,50)
+    #glintHistogram,bins = np.histogram(combGlint)
+    #glintHistogram = pl.hist(combGlint,bins,normed=1)
+    #print "Historgram shape is :",np.shape(glintHistogram)
+    #print "bins :",bins
+    #print "glintHistogram[0] :",glintHistogram[0]
+    #print "glintHistogram[1] :",glintHistogram[1]
+    #print "glintHistogram[2] :",glintHistogram[2]
+    pl.figure()
+    glintHistogram = np.histogram(glint,bins,normed=1)
+    pl.plot(bins,glintHistogram[0],label="Glint")
+    glintHistogram = np.histogram(combGlint,bins,normed=1)
+    pl.plot(bins,glintHistogram[0],label="Combined Glint")
+    glintHistogram = np.histogram(thresholdGlint,bins,normed=1)
+    pl.plot(bins,glintHistogram[0],label="Thresholded Glint")
+    pl.xlim(-0.1,1.1)
+    pl.ylim(-1.,10.)
+    pl.legend()
+    pl.show()
+
+    #pl.subplot(4,1,4)
+    #pl.plot(Scale.x,totalCurvatureSurface,label=r"$\eta^{''}(x)$")
     #pl.plot(Scale.x,np.gradient(np.gradient(totalElevSurface.real))/(delta_x*delta_x),label=r"$\eta^{''}(x)$ (gradient)")
     #pl.plot(Scale.x[1:-1],np.diff(totalElevSurface.real,n=2)/(delta_x**2.),label="$\eta^{''}(x)$ (diff)")
     #pl.plot(Scale.x,totalCurvatureSurface/(sqrt(1. + totalSlopeSurface**2.)**3.),label=r"$\kappa(x)$")
     #pl.plot(Scale.x[1:-1],(np.diff(totalElevSurface.real,n=2)/(delta_x**2.),label="Curvature (diff)")
     #pl.xlim(11.,12.)
     #pl.ylim(-0.0005,0.005)
-    pl.legend()
-    pl.grid(b=True)
-    pl.show()
+    #pl.legend()
+    #pl.grid(b=True)
+    #pl.show()
+
 
     return
 
@@ -403,6 +448,8 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
     slopeStats = DataStatsStruct(numMoments)
     curvatureStats = DataStatsStruct(numMoments)
     glintStats = [DataStatsStruct(numMoments) for geoms in np.arange(Geom.N_angles) ]
+
+    glintHistograms = [np.zeros((3,50)) for geoms in np.arange(Geom.N_angles) ]
 
     """
         Loop through the surface realisations for the quadratically
@@ -601,10 +648,31 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 
                 #glint = np.array(((totalSlopeSurface.real > slopeMin) and (totalSlopeSurface.real < slopeMax)))
                 glint = np.double(totalSlopeSurface.real > slopeMin) * np.double(totalSlopeSurface.real < slopeMax)
+
+                """
+                    Convolve the glint with a gaussian, to simulate strong forward scattering, and add skylight.
+                """
                 glintConv = np.convolve(glint,convFilter,mode='same')
                 glintConv = (glintConv<=1.)*glintConv + (glintConv>1.)
                 Skylight = 0.5*exp(-0.5*((totalSlopeSurface.real - Geom.xi_0[testAng])**2.)/(SLstdev**2.))
                 combGlint = (glintConv > Skylight)*glintConv + (glintConv < Skylight)*Skylight
+                glint = combGlint
+
+                """
+                    Threshold the glint data
+                """
+                thresholdGlint = (combGlint >= threshold)*combGlint
+
+                """
+                    Compute the histograms of the different glint types 
+                """
+                glintHistogram = np.histogram(glint,bins,normed=1)
+                glintHistograms[angle][0] += glintHistogram[0]
+                glintHistogram = np.histogram(combGlint,bins,normed=1)
+                glintHistograms[angle][1] += glintHistogram[0]
+                glintHistogram = np.histogram(thresholdGlint,bins,normed=1)
+                glintHistograms[angle][2] += glintHistogram[0]
+
 
                 ### Check if all glint elements vanish
                 result = np.where(glint)
@@ -884,7 +952,20 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
     for geoms in np.arange(Geom.N_angles) :
         pl.plot(Scale.x,glintSecondMomentFunction[geoms])
     pl.xlim(0.,50.)
-    pl.ylim(0.,0.02)
+    pl.ylim(0.,1.2*glintSecondMomentFunction[0][N/2])
+    pl.title("Glint second moment function")
+    pl.show()
+
+    pl.figure()
+    glintHistogram = np.histogram(glint,bins,normed=1)
+    pl.plot(bins,glintHistogram[0],label="Glint")
+    glintHistogram = np.histogram(combGlint,bins,normed=1)
+    pl.plot(bins,glintHistogram[0],label="Combined Glint")
+    glintHistogram = np.histogram(thresholdGlint,bins,normed=1)
+    pl.plot(bins,glintHistogram[0],label="Thresholded Glint")
+    pl.xlim(-0.1,1.1)
+    pl.ylim(-1.,10.)
+    pl.legend()
     pl.show()
 
 """
