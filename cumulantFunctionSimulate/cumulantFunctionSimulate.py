@@ -359,56 +359,50 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 
     pl.subplot(4,1,2)
     pl.plot(Scale.x,glint,label="Glint")
-    #pl.xlim(20.,30.)
+    pl.xlim(20.,30.)
     pl.ylim(-0.2,1.2)
     pl.grid(b=True)
     pl.legend()
     pl.show()
 
     filterLen=64
-    filterStdev = 0.44
+    filterStdev = 0.6
     convX = np.linspace(-5.,5.,filterLen)
     convFilter = exp(-0.5*(convX**2.)/(filterStdev**2.))
     glintConv = np.convolve(glint,convFilter,mode='same')
     glintConv = (glintConv<=1.)*glintConv + (glintConv>1.)
     SLmag,SLstdev = 0.5,1./sqrt(200.)
-    Skylight = 0.5*exp(-0.5*((totalSlopeSurface.real - Geom.xi_0[testAng])**2.)/(SLstdev**2.))
+    Skylight = SLmag*exp(-0.5*((totalSlopeSurface.real - Geom.xi_0[testAng])**2.)/(SLstdev**2.))
     combGlint = (glintConv > Skylight)*glintConv + (glintConv < Skylight)*Skylight
 
     pl.subplot(4,1,3)
     pl.plot(Scale.x,combGlint,label="Combined Glint")
-    #pl.xlim(20.,30.)
+    pl.xlim(20.,30.)
     pl.ylim(-0.2,1.2)
     pl.grid(b=True)
     pl.legend()
     pl.show()
 
-    threshold = 0.2
+    threshold = 0.45
     thresholdGlint = (combGlint >= threshold)*combGlint
 
     pl.subplot(4,1,4)
     pl.plot(Scale.x,thresholdGlint,label="Thresholded Glint")
-    #pl.xlim(11.,12.)
+    pl.xlim(20.,30.)
     pl.ylim(-0.2,1.2)
     pl.legend()
     pl.grid(b=True)
     pl.show()
 
-    bins = np.linspace(0.,1.,50)
-    #glintHistogram,bins = np.histogram(combGlint)
-    #glintHistogram = pl.hist(combGlint,bins,normed=1)
-    #print "Historgram shape is :",np.shape(glintHistogram)
-    #print "bins :",bins
-    #print "glintHistogram[0] :",glintHistogram[0]
-    #print "glintHistogram[1] :",glintHistogram[1]
-    #print "glintHistogram[2] :",glintHistogram[2]
+    nbins = 100
+    bins = np.linspace(0.,1.,nbins)
     pl.figure()
-    glintHistogram = np.histogram(glint,bins,normed=1)
-    pl.plot(bins,glintHistogram[0],label="Glint")
-    glintHistogram = np.histogram(combGlint,bins,normed=1)
-    pl.plot(bins,glintHistogram[0],label="Combined Glint")
-    glintHistogram = np.histogram(thresholdGlint,bins,normed=1)
-    pl.plot(bins,glintHistogram[0],label="Thresholded Glint")
+    glintHistogram = np.histogram(glint,bins,normed=True)
+    pl.plot(bins[:-1],glintHistogram[0],label="Glint")
+    glintHistogram = np.histogram(combGlint,bins,normed=True)
+    pl.plot(bins[:-1],glintHistogram[0],label="Combined Glint")
+    glintHistogram = np.histogram(thresholdGlint,bins,normed=True)
+    pl.plot(bins[:-1],glintHistogram[0],label="Thresholded Glint")
     pl.xlim(-0.1,1.1)
     pl.ylim(-1.,10.)
     pl.legend()
@@ -427,7 +421,7 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
     #pl.show()
 
 
-    return
+    #return
 
     """
 	    Define the glint, glint spectrum and glint power
@@ -449,7 +443,7 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
     curvatureStats = DataStatsStruct(numMoments)
     glintStats = [DataStatsStruct(numMoments) for geoms in np.arange(Geom.N_angles) ]
 
-    glintHistograms = [np.zeros((3,50)) for geoms in np.arange(Geom.N_angles) ]
+    glintHistograms = [np.zeros((3,nbins-1)) for geoms in np.arange(Geom.N_angles) ]
 
     """
         Loop through the surface realisations for the quadratically
@@ -494,11 +488,11 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 		### Calculate the elevation spectrum for the free waves
         primaryElevSpectrum = primaryElevAmplitude*(cos(primaryElevPhase) + 1j*sin(primaryElevPhase))
         #primaryElevSpectrum += 0.00001*MAX(totalElevAmplitude)*RANDOMN(seed,N)
-        primaryElevSpectrum[N/2+1:] = np.conjugate(primaryElevSpectrum[1 : N/2][::-1])
+        primaryElevSpectrum[N/2+1 :] = np.conjugate(primaryElevSpectrum[1 : N/2][::-1])
 
         ### Calculate the elevation spectrum for the bound waves
         nlElevSpectrum = nlElevAmplitude*(cos(nlElevPhase) + 1j*sin(nlElevPhase))
-        nlElevSpectrum[N/2+1:] = np.conjugate(nlElevSpectrum[1:N/2][::-1])
+        nlElevSpectrum[N/2+1 :] = np.conjugate(nlElevSpectrum[1 : N/2][::-1])
 
 		### Compute specific realisation of the free and bound waves. Nonlinear elevation
 		### (totalElevSurface) is sum of free and bound waves.
@@ -537,11 +531,11 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
         ### Calculate the slope spectrum for the free waves
         primarySlopeSpectrum = primarySlopeAmplitude*(sin(primaryElevPhase) - 1j*cos(primaryElevPhase))
         #primarySlopeSpectrum += 0.00001*MAX(totalSlopeAmplitude)*RANDOMN(seed,N)
-        primarySlopeSpectrum[N/2+1:] = np.conjugate(primarySlopeSpectrum[1 : N/2][::-1])
+        primarySlopeSpectrum[N/2+1 :] = np.conjugate(primarySlopeSpectrum[1 : N/2][::-1])
 
         ### Calculate the slope spectrum for the bound waves
         nlSlopeSpectrum = nlSlopeAmplitude*(sin(nlElevPhase) - 1j*cos(nlElevPhase))
-        nlSlopeSpectrum[N/2+1:] = np.conjugate(nlSlopeSpectrum[1:N/2][::-1])
+        nlSlopeSpectrum[N/2+1 :] = np.conjugate(nlSlopeSpectrum[1 : N/2][::-1])
 
         ### Compute specific realisation of the free and bound waves. Nonlinear slope
         ### (totalSlopeSurface) is sum of free and bound waves.
@@ -580,11 +574,11 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
         ### Calculate the curvature spectrum for the free waves
         primaryCurvatureSpectrum = primaryCurvatureAmplitude*(-cos(primaryElevPhase) - 1j*sin(primaryElevPhase))
         #primaryCurvatureSpectrum += 0.00001*MAX(totalCurvatureAmplitude)*RANDOMN(seed,N)
-        primaryCurvatureSpectrum[N/2+1:] = np.conjugate(primaryCurvatureSpectrum[1 : N/2][::-1])
+        primaryCurvatureSpectrum[N/2+1 :] = np.conjugate(primaryCurvatureSpectrum[1 : N/2][::-1])
 
         ### Calculate the curvature spectrum for the bound waves
         nlCurvatureSpectrum = nlCurvatureAmplitude*(-cos(nlElevPhase) - 1j*sin(nlElevPhase))
-        nlCurvatureSpectrum[N/2+1:] = np.conjugate(nlCurvatureSpectrum[1:N/2][::-1])
+        nlCurvatureSpectrum[N/2+1 :] = np.conjugate(nlCurvatureSpectrum[1 :N/2][::-1])
 
         ### Compute specific realisation of the free and bound waves. Nonlinear curvature
         ### (totalCurvatureSurface) is sum of free and bound waves.
@@ -652,11 +646,17 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
                 """
                     Convolve the glint with a gaussian, to simulate strong forward scattering, and add skylight.
                 """
+                #epsilon = 0.05*np.random.randn()
+                #convX = np.linspace(epsilon-5.,epsilon+5.,filterLen)
+                #convFilter = exp(-0.5*(convX**2.)/((filterStdev)**2.))
+
+                epsilon = 0.8*np.random.randn() + 1.
+                convFilter = exp(-0.5*(convX**2.)/((epsilon*filterStdev)**2.))
+                
                 glintConv = np.convolve(glint,convFilter,mode='same')
                 glintConv = (glintConv<=1.)*glintConv + (glintConv>1.)
-                Skylight = 0.5*exp(-0.5*((totalSlopeSurface.real - Geom.xi_0[testAng])**2.)/(SLstdev**2.))
+                Skylight = SLmag*exp(-0.5*((totalSlopeSurface.real - Geom.xi_0[angle])**2.)/(SLstdev**2.))
                 combGlint = (glintConv > Skylight)*glintConv + (glintConv < Skylight)*Skylight
-                glint = combGlint
 
                 """
                     Threshold the glint data
@@ -666,11 +666,11 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
                 """
                     Compute the histograms of the different glint types 
                 """
-                glintHistogram = np.histogram(glint,bins,normed=1)
+                glintHistogram = np.histogram(glint,bins,normed=True)
                 glintHistograms[angle][0] += glintHistogram[0]
-                glintHistogram = np.histogram(combGlint,bins,normed=1)
+                glintHistogram = np.histogram(combGlint,bins,normed=True)
                 glintHistograms[angle][1] += glintHistogram[0]
-                glintHistogram = np.histogram(thresholdGlint,bins,normed=1)
+                glintHistogram = np.histogram(thresholdGlint,bins,normed=True)
                 glintHistograms[angle][2] += glintHistogram[0]
 
 
@@ -736,61 +736,61 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
     #wspace = 0.2   # the amount of width reserved for blank space between subplots
     #hspace = 0.2   # the amount of height reserved for white space between subplots
 
-    pl.figure(figsize=(15,12))
-    pl.subplot(2,3,1)
-    pl.subplots_adjust(left=0.05,right=0.95,bottom=0.05,top=0.95,wspace=0.15,hspace=0.15)
-    pl.plot(Scale.k,ElevPower.primaryPower,label="primary")
-    pl.plot(Scale.k,ElevPower.nlPower,label="nonLinear")
-    pl.plot(Scale.k,ElevPower.totalPower,label="total")
-    pl.xlim(0.,5.)
-    pl.ylim(-0.0005,0.005)
-    pl.legend()
-    pl.title("Elevation Power Spectrum")
-    pl.show()
+    #pl.figure(figsize=(15,12))
+    #pl.subplot(2,3,1)
+    #pl.subplots_adjust(left=0.05,right=0.95,bottom=0.05,top=0.95,wspace=0.15,hspace=0.15)
+    #pl.plot(Scale.k,ElevPower.primaryPower,label="primary")
+    #pl.plot(Scale.k,ElevPower.nlPower,label="nonLinear")
+    #pl.plot(Scale.k,ElevPower.totalPower,label="total")
+    #pl.xlim(0.,5.)
+    #pl.ylim(-0.0005,0.005)
+    #pl.legend()
+    #pl.title("Elevation Power Spectrum")
+    #pl.show()
 
-    pl.subplot(2,3,2)
-    pl.plot(Scale.k,SlopePower.primaryPower,label="primary")
-    pl.plot(Scale.k,SlopePower.nlPower,label="nonLinear")
-    pl.plot(Scale.k,SlopePower.totalPower,label="total")
-    pl.xlim(0.,5.)
-    pl.ylim(-0.0005,0.005)
-    pl.legend()
-    pl.title("Slope Power Spectrum")
-    pl.show()
+    #pl.subplot(2,3,2)
+    #pl.plot(Scale.k,SlopePower.primaryPower,label="primary")
+    #pl.plot(Scale.k,SlopePower.nlPower,label="nonLinear")
+    #pl.plot(Scale.k,SlopePower.totalPower,label="total")
+    #pl.xlim(0.,5.)
+    #pl.ylim(-0.0005,0.005)
+    #pl.legend()
+    #pl.title("Slope Power Spectrum")
+    #pl.show()
 
-    pl.subplot(2,3,3)
-    pl.plot(Scale.k,CurvaturePower.primaryPower,label="primary")
-    pl.plot(Scale.k,CurvaturePower.nlPower,label="nonLinear")
-    pl.plot(Scale.k,CurvaturePower.totalPower,label="total")
-    pl.xlim(0.,5.)
-    pl.ylim(-0.0005,0.005)
-    pl.legend()
-    pl.title("Curvature Power Spectrum")
-    pl.show()
+    #pl.subplot(2,3,3)
+    #pl.plot(Scale.k,CurvaturePower.primaryPower,label="primary")
+    #pl.plot(Scale.k,CurvaturePower.nlPower,label="nonLinear")
+    #pl.plot(Scale.k,CurvaturePower.totalPower,label="total")
+    #pl.xlim(0.,5.)
+    #pl.ylim(-0.0005,0.005)
+    #pl.legend()
+    #pl.title("Curvature Power Spectrum")
+    #pl.show()
 
-    pl.subplot(2,3,4)
-    pl.plot(Scale.k,2.*totalElevAvgPower/(delta_k*N_r),label="total")
-    pl.xlim(0.,5.)
-    pl.ylim(-0.0005,0.005)
-    pl.legend()
-    pl.title("Average Elevation Power Spectrum")
-    pl.show()
+    #pl.subplot(2,3,4)
+    #pl.plot(Scale.k,2.*totalElevAvgPower/(delta_k*N_r),label="total")
+    #pl.xlim(0.,5.)
+    #pl.ylim(-0.0005,0.005)
+    #pl.legend()
+    #pl.title("Average Elevation Power Spectrum")
+    #pl.show()
 
-    pl.subplot(2,3,5)
-    pl.plot(Scale.k,2.*totalSlopeAvgPower/(delta_k*N_r),label="total")
-    pl.xlim(0.,5.)
-    pl.ylim(-0.0005,0.005)
-    pl.legend()
-    pl.title("Average Slope Power Spectrum")
-    pl.show()
+    #pl.subplot(2,3,5)
+    #pl.plot(Scale.k,2.*totalSlopeAvgPower/(delta_k*N_r),label="total")
+    #pl.xlim(0.,5.)
+    #pl.ylim(-0.0005,0.005)
+    #pl.legend()
+    #pl.title("Average Slope Power Spectrum")
+    #pl.show()
 
-    pl.subplot(2,3,6)
-    pl.plot(Scale.k,2.*totalCurvatureAvgPower/(delta_k*N_r),label="total")
-    pl.xlim(0.,5.)
-    pl.ylim(-0.0005,0.005)
-    pl.legend()
-    pl.title("Average Curvature Power Spectrum")
-    pl.show()
+    #pl.subplot(2,3,6)
+    #pl.plot(Scale.k,2.*totalCurvatureAvgPower/(delta_k*N_r),label="total")
+    #pl.xlim(0.,5.)
+    #pl.ylim(-0.0005,0.005)
+    #pl.legend()
+    #pl.title("Average Curvature Power Spectrum")
+    #pl.show()
 
 
     print ""
@@ -821,6 +821,11 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
         glintStats[geoms].mean     /= double(angleRunsCum[geoms])
         glintStats[geoms].variance /= double(angleRunsCum[geoms])
         glintStats[geoms].skewness /= double(angleRunsCum[geoms])
+
+    for geoms in np.arange(Geom.N_angles) :
+        glintHistograms[geoms][0] /= double(angleRunsCum[geoms])
+        glintHistograms[geoms][1] /= double(angleRunsCum[geoms])
+        glintHistograms[geoms][2] /= double(angleRunsCum[geoms])
 
     print "\nPython Elevation mean %10.6e" % elevStats.mean
     print "Python Elevation stdev %10.6e" % sqrt(elevStats.variance)
@@ -957,15 +962,34 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
     pl.show()
 
     pl.figure()
-    glintHistogram = np.histogram(glint,bins,normed=1)
-    pl.plot(bins,glintHistogram[0],label="Glint")
-    glintHistogram = np.histogram(combGlint,bins,normed=1)
-    pl.plot(bins,glintHistogram[0],label="Combined Glint")
-    glintHistogram = np.histogram(thresholdGlint,bins,normed=1)
-    pl.plot(bins,glintHistogram[0],label="Thresholded Glint")
+    for geoms in np.arange(Geom.N_angles) :
+        pl.plot(bins[:-1],glintHistograms[geoms][0],\
+            label=r"$\theta_{s} = "+str(Geom.source_angle[geoms]*180./pi)+r"^{\circ}$")
+    pl.legend()
+    pl.title("Glint")
     pl.xlim(-0.1,1.1)
     pl.ylim(-1.,10.)
+    pl.show()
+
+    pl.figure()
+    for geoms in np.arange(Geom.N_angles) :
+        pl.plot(bins[:-1],glintHistograms[geoms][1],\
+            label=r"$\theta_{s} = "+str(Geom.source_angle[geoms]*180./pi)+r"^{\circ}$")
     pl.legend()
+    pl.title("Combined Glint")
+    pl.xlim(-0.1,1.1)
+    pl.ylim(-1.,10.)
+    pl.show()
+
+    pl.figure()
+    for geoms in np.arange(Geom.N_angles) :
+        pl.plot(bins[:-1],glintHistograms[geoms][2],\
+            label=r"$\theta_{s} = "+str(Geom.source_angle[geoms]*180./pi)+r"^{\circ}$")
+    pl.legend()
+    pl.title("Thresholded Glint")
+    pl.xlim(-0.1,1.1)
+    pl.ylim(-1.,10.)
+    pl.title("Thresholded Glint: "+str(threshold))
     pl.show()
 
 """
