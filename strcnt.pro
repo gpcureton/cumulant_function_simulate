@@ -1,1 +1,0 @@
-../textoidl/strcnt.pro

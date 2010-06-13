@@ -1,1 +1,0 @@
-../textoidl/sub_sup_idl.pro

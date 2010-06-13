@@ -1,1 +1,0 @@
-../textoidl/translate_sub_super.pro

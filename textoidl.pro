@@ -1,1 +1,0 @@
-../textoidl/textoidl.pro
