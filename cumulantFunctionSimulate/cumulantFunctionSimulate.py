@@ -1,3 +1,38 @@
+#!/usr/bin/env python
+# encoding: utf-8
+"""
+cumulantFunctionSimulate.py
+
+This program works out an example of bispectra which      
+in the paper by Kim & Powers (1979). We have two signals, 
+one consisting of three independent components with the    
+wavenumbers k1, k2, k3; and the other satisfying the      
+rule k1 + k2 = k3. The bispectra of these two signals will
+be computed to see  the effect of phase correlation on the
+signal bispectra                                          
+                                                          
+                                                          
+Input parameters are...                                   
+                                                          
+N            : Data length                                
+NN           : Bispectrum data length                     
+delta_x      : Spatial increment in meters                
+N_r          : Number of realisations                     
+spectrumType : Form of the elevation power spectrum       
+specExp      : Elevation power spectrum is proportional to
+               k^{-specExp}                               
+nlSwitch     : Elevation phase coupling on/off            
+                                                          
+Output of results are written to HDF5 file.               
+                                                          
+Created by Geoff Cureton on 2011-03-06.
+Copyright (c) 2011 Geoff Cureton. All rights reserved.
+"""
+
+__author__ = 'G.P. Cureton <geoff.cureton@physics.org>'
+__version__ = '$Id$'
+__docformat__ = 'Epytext'
+
 import sys, time, string, getopt, copy
 import numpy as np
 from numpy import pi,sin,cos,tan,sqrt,abs,exp
@@ -5,7 +40,7 @@ from numpy.fft import fft,ifft
 from numpy import float64 as double
 
 import matplotlib as mpl
-from matplotlib import pylab as pl
+from matplotlib import pyplot as pl
 from scipy import stats as stats
 import time
 
@@ -318,112 +353,6 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
     nlCurvatureAvgPower = np.zeros(N,dtype=double)
 
     """
-        Plot a single instance of the elevation, slope, curvature and glint, for
-        comparison purposes.
-    """
-
-    #left  = 0.125  # the left side of the subplots of the figure
-    #right = 0.9    # the right side of the subplots of the figure
-    #bottom = 0.1   # the bottom of the subplots of the figure
-    #top = 0.9      # the top of the subplots of the figure
-    #wspace = 0.2   # the amount of width reserved for blank space between subplots
-    #hspace = 0.2   # the amount of height reserved for white space between subplots
-
-    pl.figure(figsize=(12,10))
-    pl.subplots_adjust(left=0.05,right=0.95,bottom=0.05,top=0.95,wspace=0.15,hspace=0.15)
-
-    #pl.subplot(4,1,1)
-    #pl.plot(Scale.x,totalElevSurface.real,label="Elevation")
-    #pl.xlim(11.,12.)
-    #pl.ylim(-0.0005,0.005)
-    #pl.legend()
-    #pl.show()
-
-    pl.subplot(4,1,1)
-    testAng = 0
-    slopeMin = Geom.xi_min[testAng]
-    slopeMax = Geom.xi_max[testAng]
-    pl.plot(Scale.x,totalSlopeSurface.real,label="Slope")
-    pl.plot(Scale.x,np.ones(N)*slopeMin,label="Slope Min")
-    pl.plot(Scale.x,np.ones(N)*slopeMax,label="Slope Max")
-    #pl.plot(Scale.x,np.gradient(totalElevSurface.real,delta_x),label="Slope (gradient)")
-    #pl.plot(Scale.x[:-1],np.diff(totalElevSurface.real,n=1)/delta_x,label="Slope (diff)")
-    #pl.plot(Scale.x[:-1],np.diff(totalElevSurface.real,n=1)/delta_x,label="Slope (diff)")
-    pl.xlim(20.,30.)
-    #pl.ylim(-0.0005,0.005)
-    pl.legend()
-    pl.grid(b=True)
-    pl.show()
-
-    glint = np.double(totalSlopeSurface.real > slopeMin) * np.double(totalSlopeSurface.real < slopeMax)
-
-    pl.subplot(4,1,2)
-    pl.plot(Scale.x,glint,label="Glint")
-    pl.xlim(20.,30.)
-    pl.ylim(-0.2,1.2)
-    pl.grid(b=True)
-    pl.legend()
-    pl.show()
-
-    filterLen=64
-    filterStdev = 0.6
-    convX = np.linspace(-5.,5.,filterLen)
-    convFilter = exp(-0.5*(convX**2.)/(filterStdev**2.))
-    glintConv = np.convolve(glint,convFilter,mode='same')
-    glintConv = (glintConv<=1.)*glintConv + (glintConv>1.)
-    SLmag,SLstdev = 0.5,1./sqrt(200.)
-    Skylight = SLmag*exp(-0.5*((totalSlopeSurface.real - Geom.xi_0[testAng])**2.)/(SLstdev**2.))
-    combGlint = (glintConv > Skylight)*glintConv + (glintConv < Skylight)*Skylight
-
-    pl.subplot(4,1,3)
-    pl.plot(Scale.x,combGlint,label="Combined Glint")
-    pl.xlim(20.,30.)
-    pl.ylim(-0.2,1.2)
-    pl.grid(b=True)
-    pl.legend()
-    pl.show()
-
-    threshold = 0.45
-    thresholdGlint = (combGlint >= threshold)*combGlint
-
-    pl.subplot(4,1,4)
-    pl.plot(Scale.x,thresholdGlint,label="Thresholded Glint")
-    pl.xlim(20.,30.)
-    pl.ylim(-0.2,1.2)
-    pl.legend()
-    pl.grid(b=True)
-    pl.show()
-
-    nbins = 100
-    bins = np.linspace(0.,1.,nbins)
-    pl.figure()
-    glintHistogram = np.histogram(glint,bins,normed=True)
-    pl.plot(bins[:-1],glintHistogram[0],label="Glint")
-    glintHistogram = np.histogram(combGlint,bins,normed=True)
-    pl.plot(bins[:-1],glintHistogram[0],label="Combined Glint")
-    glintHistogram = np.histogram(thresholdGlint,bins,normed=True)
-    pl.plot(bins[:-1],glintHistogram[0],label="Thresholded Glint")
-    pl.xlim(-0.1,1.1)
-    pl.ylim(-1.,10.)
-    pl.legend()
-    pl.show()
-
-    #pl.subplot(4,1,4)
-    #pl.plot(Scale.x,totalCurvatureSurface,label=r"$\eta^{''}(x)$")
-    #pl.plot(Scale.x,np.gradient(np.gradient(totalElevSurface.real))/(delta_x*delta_x),label=r"$\eta^{''}(x)$ (gradient)")
-    #pl.plot(Scale.x[1:-1],np.diff(totalElevSurface.real,n=2)/(delta_x**2.),label="$\eta^{''}(x)$ (diff)")
-    #pl.plot(Scale.x,totalCurvatureSurface/(sqrt(1. + totalSlopeSurface**2.)**3.),label=r"$\kappa(x)$")
-    #pl.plot(Scale.x[1:-1],(np.diff(totalElevSurface.real,n=2)/(delta_x**2.),label="Curvature (diff)")
-    #pl.xlim(11.,12.)
-    #pl.ylim(-0.0005,0.005)
-    #pl.legend()
-    #pl.grid(b=True)
-    #pl.show()
-
-
-    #return
-
-    """
 	    Define the glint, glint spectrum and glint power
     """
 
@@ -455,7 +384,7 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
     angleRuns = np.zeros(Geom.N_angles,np.long)
     angleRunsCum = np.zeros(Geom.N_angles,np.long)
 
-    time.sleep(3.)
+    #time.sleep(3.)
     t1 = time.time()
 
     while (angleRuns.sum() < N_r*Geom.N_angles) :
@@ -487,7 +416,6 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 		
 		### Calculate the elevation spectrum for the free waves
         primaryElevSpectrum = primaryElevAmplitude*(cos(primaryElevPhase) + 1j*sin(primaryElevPhase))
-        #primaryElevSpectrum += 0.00001*MAX(totalElevAmplitude)*RANDOMN(seed,N)
         primaryElevSpectrum[N/2+1 :] = np.conjugate(primaryElevSpectrum[1 : N/2][::-1])
 
         ### Calculate the elevation spectrum for the bound waves
@@ -650,28 +578,28 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
                 #convX = np.linspace(epsilon-5.,epsilon+5.,filterLen)
                 #convFilter = exp(-0.5*(convX**2.)/((filterStdev)**2.))
 
-                epsilon = 0.8*np.random.randn() + 1.
-                convFilter = exp(-0.5*(convX**2.)/((epsilon*filterStdev)**2.))
+                #epsilon = 0.8*np.random.randn() + 1.
+                #convFilter = exp(-0.5*(convX**2.)/((epsilon*filterStdev)**2.))
                 
-                glintConv = np.convolve(glint,convFilter,mode='same')
-                glintConv = (glintConv<=1.)*glintConv + (glintConv>1.)
-                Skylight = SLmag*exp(-0.5*((totalSlopeSurface.real - Geom.xi_0[angle])**2.)/(SLstdev**2.))
-                combGlint = (glintConv > Skylight)*glintConv + (glintConv < Skylight)*Skylight
+                #glintConv = np.convolve(glint,convFilter,mode='same')
+                #glintConv = (glintConv<=1.)*glintConv + (glintConv>1.)
+                #Skylight = SLmag*exp(-0.5*((totalSlopeSurface.real - Geom.xi_0[angle])**2.)/(SLstdev**2.))
+                #combGlint = (glintConv > Skylight)*glintConv + (glintConv < Skylight)*Skylight
 
                 """
                     Threshold the glint data
                 """
-                thresholdGlint = (combGlint >= threshold)*combGlint
+                #thresholdGlint = (combGlint >= threshold)*combGlint
 
                 """
                     Compute the histograms of the different glint types 
                 """
-                glintHistogram = np.histogram(glint,bins,normed=True)
-                glintHistograms[angle][0] += glintHistogram[0]
-                glintHistogram = np.histogram(combGlint,bins,normed=True)
-                glintHistograms[angle][1] += glintHistogram[0]
-                glintHistogram = np.histogram(thresholdGlint,bins,normed=True)
-                glintHistograms[angle][2] += glintHistogram[0]
+                #glintHistogram = np.histogram(glint,bins,normed=True)
+                #glintHistograms[angle][0] += glintHistogram[0]
+                #glintHistogram = np.histogram(combGlint,bins,normed=True)
+                #glintHistograms[angle][1] += glintHistogram[0]
+                #glintHistogram = np.histogram(thresholdGlint,bins,normed=True)
+                #glintHistograms[angle][2] += glintHistogram[0]
 
 
                 ### Check if all glint elements vanish
@@ -727,72 +655,7 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
         ### End angle loop
 
     ### End realisation loop
-
     
-    #left  = 0.125  # the left side of the subplots of the figure
-    #right = 0.9    # the right side of the subplots of the figure
-    #bottom = 0.1   # the bottom of the subplots of the figure
-    #top = 0.9      # the top of the subplots of the figure
-    #wspace = 0.2   # the amount of width reserved for blank space between subplots
-    #hspace = 0.2   # the amount of height reserved for white space between subplots
-
-    #pl.figure(figsize=(15,12))
-    #pl.subplot(2,3,1)
-    #pl.subplots_adjust(left=0.05,right=0.95,bottom=0.05,top=0.95,wspace=0.15,hspace=0.15)
-    #pl.plot(Scale.k,ElevPower.primaryPower,label="primary")
-    #pl.plot(Scale.k,ElevPower.nlPower,label="nonLinear")
-    #pl.plot(Scale.k,ElevPower.totalPower,label="total")
-    #pl.xlim(0.,5.)
-    #pl.ylim(-0.0005,0.005)
-    #pl.legend()
-    #pl.title("Elevation Power Spectrum")
-    #pl.show()
-
-    #pl.subplot(2,3,2)
-    #pl.plot(Scale.k,SlopePower.primaryPower,label="primary")
-    #pl.plot(Scale.k,SlopePower.nlPower,label="nonLinear")
-    #pl.plot(Scale.k,SlopePower.totalPower,label="total")
-    #pl.xlim(0.,5.)
-    #pl.ylim(-0.0005,0.005)
-    #pl.legend()
-    #pl.title("Slope Power Spectrum")
-    #pl.show()
-
-    #pl.subplot(2,3,3)
-    #pl.plot(Scale.k,CurvaturePower.primaryPower,label="primary")
-    #pl.plot(Scale.k,CurvaturePower.nlPower,label="nonLinear")
-    #pl.plot(Scale.k,CurvaturePower.totalPower,label="total")
-    #pl.xlim(0.,5.)
-    #pl.ylim(-0.0005,0.005)
-    #pl.legend()
-    #pl.title("Curvature Power Spectrum")
-    #pl.show()
-
-    #pl.subplot(2,3,4)
-    #pl.plot(Scale.k,2.*totalElevAvgPower/(delta_k*N_r),label="total")
-    #pl.xlim(0.,5.)
-    #pl.ylim(-0.0005,0.005)
-    #pl.legend()
-    #pl.title("Average Elevation Power Spectrum")
-    #pl.show()
-
-    #pl.subplot(2,3,5)
-    #pl.plot(Scale.k,2.*totalSlopeAvgPower/(delta_k*N_r),label="total")
-    #pl.xlim(0.,5.)
-    #pl.ylim(-0.0005,0.005)
-    #pl.legend()
-    #pl.title("Average Slope Power Spectrum")
-    #pl.show()
-
-    #pl.subplot(2,3,6)
-    #pl.plot(Scale.k,2.*totalCurvatureAvgPower/(delta_k*N_r),label="total")
-    #pl.xlim(0.,5.)
-    #pl.ylim(-0.0005,0.005)
-    #pl.legend()
-    #pl.title("Average Curvature Power Spectrum")
-    #pl.show()
-
-
     print ""
     print "AngleRuns:    ",angleRuns," ... for total of ", \
         int(np.sum(angleRuns))," / ",N_r*Geom.N_angles
