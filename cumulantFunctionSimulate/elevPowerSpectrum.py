@@ -26,9 +26,9 @@ def phillips_elev_spectrum(Scale,Power,NLCoupling,powExponent):
     gammaT =  0.073     # Water surface tension in N * m^{-1}
     rho    =  1000.     # Water density in kg * m^{3}
 
-    kc0 = g/(v*v)	                                # Lower wavenumber cutoff for wind waves
-    k_gamma = np.min(np.sqrt(rho*g/gammaT),k_max)	# Upper wavenumber cutoff for 
-                                                    #the capillary wave region
+    kc0 = g/(v*v)	                                    # Lower wavenumber cutoff for wind waves
+    k_gamma = np.minimum(np.sqrt(rho*g/gammaT),k_max)	# Upper wavenumber cutoff for 
+                                                        #the capillary wave region
 
     nlCutoff   = 1.5	### Upper limit of source waves is nlCutoff*kc0
     elevStDev  = np.sqrt(0.25*B*(kc0**(-2.)-k_gamma**(-2.)))

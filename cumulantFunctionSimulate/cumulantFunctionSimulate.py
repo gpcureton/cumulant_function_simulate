@@ -29,6 +29,12 @@ Created by Geoff Cureton on 2011-03-06.
 Copyright (c) 2011 Geoff Cureton. All rights reserved.
 """
 
+file_Date = '$Date$'
+file_Revision = '$Revision$'
+file_Author = '$Author$'
+file_HeadURL = '$HeadURL$'
+file_Id = '$Id$'
+
 __author__ = 'G.P. Cureton <geoff.cureton@physics.org>'
 __version__ = '$Id$'
 __docformat__ = 'Epytext'
@@ -39,10 +45,27 @@ from numpy import pi,sin,cos,tan,sqrt,abs,exp
 from numpy.fft import fft,ifft
 from numpy import float64 as double
 
-import matplotlib as mpl
-from matplotlib import pyplot as pl
 from scipy import stats as stats
 import time
+
+#import matplotlib
+#import matplotlib.cm as cm
+#from matplotlib.colors import ListedColormap
+#from matplotlib.figure import Figure
+
+#matplotlib.use('Agg')
+#from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
+
+#matplotlib.use('WXAgg')
+#from matplotlib.backends.backend_wxagg import FigureCanvasAgg as FigureCanvas
+
+# This must come *after* the backend is specified.
+#import matplotlib.pyplot as ppl
+
+import optparse as optparse
+
+import tables as pytables
+from tables import exceptions as pyEx
 
 from elevPowerSpectrum import phillips_elev_spectrum
 
@@ -372,8 +395,6 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
     curvatureStats = DataStatsStruct(numMoments)
     glintStats = [DataStatsStruct(numMoments) for geoms in np.arange(Geom.N_angles) ]
 
-    glintHistograms = [np.zeros((3,nbins-1)) for geoms in np.arange(Geom.N_angles) ]
-
     """
         Loop through the surface realisations for the quadratically
         coupled oscillations
@@ -393,7 +414,7 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 
         t2 = time.time()
         #print "Elapsed time = ",t2-t1
-        if ((t2-t1) > 1.):
+        if ((t2-t1) > 0.5):
             print "\n>>>>>>>>>>>>>>>>>>>>>\n"
             print "Computing realisation: %d at time %f" % (N_r_cum,(t2-t1))
             t1 = time.time()
@@ -430,8 +451,8 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
  
 		### Compute the average power spectrum for free, bound and total elevation waves
         primaryElevAvgPower += abs(ifft(primaryElevSurface))**2.
-        nlElevAvgPower += abs(ifft(nlElevSurface))**2.
-        totalElevAvgPower += abs(ifft(totalElevSurface))**2.
+        nlElevAvgPower      += abs(ifft(nlElevSurface))**2.
+        totalElevAvgPower   += abs(ifft(totalElevSurface))**2.
 
         #print "\tElevation stdev from power vector:    %10.6e meters" % \
             #(sqrt(np.sum(abs(ifft(totalElevSurface.real))**2.)))
@@ -440,8 +461,8 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 
         ### Compute the elevation moments
 
-        elevStats.mean     += stats.mean(totalElevSurface.real)
-        elevStats.variance += stats.var(totalElevSurface.real)
+        elevStats.mean     += np.mean(totalElevSurface.real)
+        elevStats.variance += np.var(totalElevSurface.real)
         elevStats.skewness += stats.skew(totalElevSurface.real)
 
         elevStats.moments += [ np.sum(totalElevSurface.real    )/double(N), \
@@ -453,7 +474,7 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 
         """
 		    Compute the slope realisations from the slope spectra
-		    and the synthesisised phases
+		    and the synthesised phases
         """
 		
         ### Calculate the slope spectrum for the free waves
@@ -483,8 +504,8 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 
         ### Compute the slope moments
 
-        slopeStats.mean     += stats.mean(totalSlopeSurface.real)
-        slopeStats.variance += stats.var(totalSlopeSurface.real)
+        slopeStats.mean     += np.mean(totalSlopeSurface.real)
+        slopeStats.variance += np.var(totalSlopeSurface.real)
         slopeStats.skewness += stats.skew(totalSlopeSurface.real)
 
         slopeStats.moments += [ np.sum(totalSlopeSurface    )/double(N), \
@@ -496,7 +517,7 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 
         """
 		    Compute the curvature realisations from the curvature spectra
-		    and the synthesisised phases
+		    and the synthesised phases
         """
 		
         ### Calculate the curvature spectrum for the free waves
@@ -533,8 +554,8 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 
         ### Compute the curvature moments
 
-        curvatureStats.mean     += stats.mean(totalCurvatureSurface.real)
-        curvatureStats.variance += stats.var(totalCurvatureSurface.real)
+        curvatureStats.mean     += np.mean(totalCurvatureSurface.real)
+        curvatureStats.variance += np.var(totalCurvatureSurface.real)
         curvatureStats.skewness += stats.skew(totalCurvatureSurface.real)
 
         curvatureStats.moments += [ np.sum(totalCurvatureSurface    )/double(N), \
@@ -568,39 +589,7 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
                 slopeMin = Geom.xi_min[angle]
                 slopeMax = Geom.xi_max[angle]
 
-                #glint = np.array(((totalSlopeSurface.real > slopeMin) and (totalSlopeSurface.real < slopeMax)))
                 glint = np.double(totalSlopeSurface.real > slopeMin) * np.double(totalSlopeSurface.real < slopeMax)
-
-                """
-                    Convolve the glint with a gaussian, to simulate strong forward scattering, and add skylight.
-                """
-                #epsilon = 0.05*np.random.randn()
-                #convX = np.linspace(epsilon-5.,epsilon+5.,filterLen)
-                #convFilter = exp(-0.5*(convX**2.)/((filterStdev)**2.))
-
-                #epsilon = 0.8*np.random.randn() + 1.
-                #convFilter = exp(-0.5*(convX**2.)/((epsilon*filterStdev)**2.))
-                
-                #glintConv = np.convolve(glint,convFilter,mode='same')
-                #glintConv = (glintConv<=1.)*glintConv + (glintConv>1.)
-                #Skylight = SLmag*exp(-0.5*((totalSlopeSurface.real - Geom.xi_0[angle])**2.)/(SLstdev**2.))
-                #combGlint = (glintConv > Skylight)*glintConv + (glintConv < Skylight)*Skylight
-
-                """
-                    Threshold the glint data
-                """
-                #thresholdGlint = (combGlint >= threshold)*combGlint
-
-                """
-                    Compute the histograms of the different glint types 
-                """
-                #glintHistogram = np.histogram(glint,bins,normed=True)
-                #glintHistograms[angle][0] += glintHistogram[0]
-                #glintHistogram = np.histogram(combGlint,bins,normed=True)
-                #glintHistograms[angle][1] += glintHistogram[0]
-                #glintHistogram = np.histogram(thresholdGlint,bins,normed=True)
-                #glintHistograms[angle][2] += glintHistogram[0]
-
 
                 ### Check if all glint elements vanish
                 result = np.where(glint)
@@ -613,10 +602,10 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
                     #" --> attempt ",angleRunsCum[angle]+1
 
                     ### There are no glints, add to attempts count
-
                     ### If this angle fails and there are no glints, then steeper 
                     ### angles will fail also, so break out of the angle loop and 
                     ### proceed to the next realisation...
+
                     angleRunsCum[angle:Geom.N_angles] += 1
                     break
 
@@ -631,15 +620,16 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 
                     ### Compute the glint moments
 
-                    glintStats[angle].mean     += stats.mean(glint.real)
-                    glintStats[angle].variance += stats.var( glint.real)
+                    glintStats[angle].mean     += np.mean(glint.real)
+                    glintStats[angle].variance += np.var( glint.real)
                     glintStats[angle].skewness += stats.skew(glint.real)
 
                     glintStats[angle].moments += [ np.sum(glint.real    )/double(N), \
                                                    np.sum(glint.real**2.)/double(N), \
                                                    np.sum(glint.real**3.)/double(N) ]
 
-                    ### Compute the Fourier spectrum of this glint realisation
+                    ### Compute the Fourier spectrum of this glint realisation (using ifft 
+                    ### which has same normalisation as IDL FFT routine).
                     glintSpectrum = ifft(glint)
 
                     """
@@ -685,11 +675,6 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
         glintStats[geoms].variance /= double(angleRunsCum[geoms])
         glintStats[geoms].skewness /= double(angleRunsCum[geoms])
 
-    for geoms in np.arange(Geom.N_angles) :
-        glintHistograms[geoms][0] /= double(angleRunsCum[geoms])
-        glintHistograms[geoms][1] /= double(angleRunsCum[geoms])
-        glintHistograms[geoms][2] /= double(angleRunsCum[geoms])
-
     print "\nPython Elevation mean %10.6e" % elevStats.mean
     print "Python Elevation stdev %10.6e" % sqrt(elevStats.variance)
     print "Python Elevation variance %10.6e" % elevStats.variance
@@ -711,12 +696,6 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
             glintStats[geoms].mean,\
             glintStats[geoms].variance,\
             glintStats[geoms].skewness)
-
-    #for geoms in np.arange(Geom.N_angles) :
-        #print "\nAngle ",geoms,"..."
-        #print "\n\tGlint stdev %10.6e"   % glintStats[geoms].mean
-        #print "\tGlint  variance %10.6e" % glintStats[geoms].variance
-        #print "\tGlint  skewness %10.6e" % glintStats[geoms].skewness
 
     """
         Compute the moments and cumulants our way
@@ -792,68 +771,10 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
     slopeSecondMomentFunction =  fft(totalSlopeAvgPower)
     slopeSecondMomentFunction /= slopeSecondMomentFunction.real[0]
 
-    pl.figure(figsize=(12,8))
-    pl.subplot(3,1,1)
-    pl.subplots_adjust(left=0.05,right=0.95,bottom=0.05,top=0.95,wspace=0.15,hspace=0.15)
-
-    pl.plot(Scale.x,elevSecondMomentFunction,label="elevation")
-    pl.xlim(0.,50.)
-    #pl.ylim(-0.0005,0.005)
-    pl.legend()
-    pl.title("Elevation second moment function")
-    pl.show()
-
-    pl.subplot(3,1,2)
-    pl.plot(Scale.x,slopeSecondMomentFunction,label="slope")
-    pl.xlim(0.,50.)
-    pl.ylim(-0.2,0.2)
-    pl.legend()
-    pl.title("Slope second moment function")
-    pl.show()
-
     glintSecondMomentFunction = np.zeros((Geom.N_angles,N),dtype=double)
     for geoms in np.arange(Geom.N_angles) :
-        glintSecondMomentFunction[geoms] = fft(totalGlintAvgPower[geoms])
+        glintSecondMomentFunction[geoms] = fft(totalGlintAvgPower[geoms]).real
         glintSecondMomentFunction[geoms] /= glintSecondMomentFunction[geoms][0]
-
-    pl.subplot(3,1,3)
-    for geoms in np.arange(Geom.N_angles) :
-        pl.plot(Scale.x,glintSecondMomentFunction[geoms])
-    pl.xlim(0.,50.)
-    pl.ylim(0.,1.2*glintSecondMomentFunction[0][N/2])
-    pl.title("Glint second moment function")
-    pl.show()
-
-    pl.figure()
-    for geoms in np.arange(Geom.N_angles) :
-        pl.plot(bins[:-1],glintHistograms[geoms][0],\
-            label=r"$\theta_{s} = "+str(Geom.source_angle[geoms]*180./pi)+r"^{\circ}$")
-    pl.legend()
-    pl.title("Glint")
-    pl.xlim(-0.1,1.1)
-    pl.ylim(-1.,10.)
-    pl.show()
-
-    pl.figure()
-    for geoms in np.arange(Geom.N_angles) :
-        pl.plot(bins[:-1],glintHistograms[geoms][1],\
-            label=r"$\theta_{s} = "+str(Geom.source_angle[geoms]*180./pi)+r"^{\circ}$")
-    pl.legend()
-    pl.title("Combined Glint")
-    pl.xlim(-0.1,1.1)
-    pl.ylim(-1.,10.)
-    pl.show()
-
-    pl.figure()
-    for geoms in np.arange(Geom.N_angles) :
-        pl.plot(bins[:-1],glintHistograms[geoms][2],\
-            label=r"$\theta_{s} = "+str(Geom.source_angle[geoms]*180./pi)+r"^{\circ}$")
-    pl.legend()
-    pl.title("Thresholded Glint")
-    pl.xlim(-0.1,1.1)
-    pl.ylim(-1.,10.)
-    pl.title("Thresholded Glint: "+str(threshold))
-    pl.show()
 
 """
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1780,15 +1701,112 @@ END
 """
 
 
-if __name__ == '__main__':
-    N            = int(sys.argv[1])
-    NN           = int(sys.argv[2])   
-    delta_x      = double(sys.argv[3]) 
-    N_r          = int(sys.argv[4])  
-    spectrumType = str(sys.argv[5])    
-    specExp      = double(sys.argv[6])  
-    nlSwitch     = int(sys.argv[7])  
+###################################################
+#                  Main Function                  #
+###################################################
 
-    pl.ioff()
+def main():
+
+    spectrumChoices=['phillips_3','phillips_4','gaussian']
+
+    description = \
+    '''
+    This is a brief description of %prog
+    '''
+    usage = "usage: %prog [mandatory args] [options]"
+    version = __version__
+    parser = optparse.OptionParser(description=description,usage=usage,version=version)
+
+    # Mandatory arguments
+    mandatoryGroup = optparse.OptionGroup(parser, "Mandatory Arguments",
+                        "At a minimum these arguments must be specified")
+
+    mandatoryGroup.add_option('-n','--numdatapoints',
+                      action="store",
+                      dest="N" ,
+                      #default='1024',
+                      type="int",
+                      help="Number of points of the glint dataset. Must be an integer power of 2")
+    mandatoryGroup.add_option('-N','--num2Dpoints',
+                      action="store",
+                      dest="NN" ,
+                      #default='64',
+                      type="int",
+                      help="Number of points of the bispectrum array side. Must be an integer power of 2")
+    mandatoryGroup.add_option('-d','--deltax',
+                      action="store",
+                      dest="delta_x",
+                      default='0.2',
+                      type="float",
+                      help="The spatial increment in meters. [default: %default]")
+    mandatoryGroup.add_option('-r','--num_realisations',
+                      action="store",
+                      dest="N_r" ,
+                      #default='100',
+                      type="int",
+                      help="Number of realisations")
+    mandatoryGroup.add_option('-S','--spectrum_type',
+                      action="store",
+                      dest="spectrumType",
+                      type="string",
+                      help='''Form of the elevation power spectrum.\n\n
+                                                   Possible values are...
+                                                   %s
+                                                   ''' % (spectrumChoices.__str__()[1:-1]))
+
+    parser.add_option_group(mandatoryGroup)
+
+    # Optional arguments
+    optionalGroup = optparse.OptionGroup(parser, "Extra Options",
+                        "These options may be used to customize plot characteristics.")
+
+    optionalGroup.add_option('-l','--nonlinear_modes',
+                      action="store_true",
+                      dest="nlSwitch",
+                      help="Switch on nonlinear modes.")
+    optionalGroup.add_option('-o','--output_file',
+                      action="store",
+                      dest="outputFile",
+                      default="outGrid.h5",
+                      type="string",
+                      help="The full path of the output HDF5 file. [default: %default]")
+
+
+    parser.add_option_group(optionalGroup)
+
+    # Parse the arguments from the command line
+    (options, args) = parser.parse_args()
+
+    # Check that all of the mandatory options are given. If one or more 
+    # are missing, print error message and exit...
+    mandatories = ['N', 'NN','delta_x','N_r', 'spectrumType','nlSwitch']
+    mand_errors = ["Missing mandatory argument [-n N            | --numdatapoints=N]",
+                   "Missing mandatory argument [-N NN           | --num2Dpoints=NN]",
+                   "Missing mandatory argument [-d delta_x      | --deltax=delta_x]",
+                   "Missing mandatory argument [-r N_r          | --num_realisations=N_r]",
+                   "Missing mandatory argument [-S spectrumType | --spectrum_type=spectrumType]"
+                  ]
+    isMissingMand = False
+    for m,m_err in zip(mandatories,mand_errors):
+        if not options.__dict__[m]:
+            isMissingMand = True
+            print m_err
+    if isMissingMand :
+        parser.error("Incomplete mandatory arguments, aborting...")
+
+    N            = options.N
+    NN           = options.NN
+    delta_x      = options.delta_x
+    N_r          = options.N_r
+    spectrumType = options.spectrumType
+    specExp      = 4 if options.spectrumType=='phillips_4' else 3
+    nlSwitch     = options.nlSwitch
+
     cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch)
-    pl.ion()
+
+    sys.exit(0)
+
+if __name__ == '__main__':
+    main()
+
+
