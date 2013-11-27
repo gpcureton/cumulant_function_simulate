@@ -3,30 +3,62 @@
 """
 cumulantFunctionSimulate.py
 
-This program works out an example of bispectra which      
-in the paper by Kim & Powers (1979). We have two signals, 
-one consisting of three independent components with the    
-wavenumbers k1, k2, k3; and the other satisfying the      
-rule k1 + k2 = k3. The bispectra of these two signals will
-be computed to see  the effect of phase correlation on the
-signal bispectra                                          
-                                                          
-                                                          
-Input parameters are...                                   
-                                                          
-N            : Data length                                
-NN           : Bispectrum data length                     
-delta_x      : Spatial increment in meters                
-N_r          : Number of realisations                     
-spectrumType : Form of the elevation power spectrum       
-specExp      : Elevation power spectrum is proportional to
-               k^{-specExp}                               
-nlSwitch     : Elevation phase coupling on/off            
-                                                          
-Output of results are written to HDF5 file.               
-                                                          
+
+Purpose: This program works out an example of bispectra which      
+  in the paper by Kim & Powers (1979). We have two signals, 
+  one consisting of three independent components with the    
+  wavenumbers k1, k2, k3; and the other satisfying the      
+  rule k1 + k2 = k3. The bispectra of these two signals will
+  be computed to see  the effect of phase correlation on the
+  signal bispectra
+
+Input:
+    N            : Data length                                
+    NN           : Bispectrum data length                     
+    delta_x      : Spatial increment in meters                
+    N_r          : Number of realisations                     
+    spectrumType : Form of the elevation power spectrum       
+    specExp      : Elevation power spectrum is proportional to
+                   k^{-specExp}                               
+    nlSwitch     : Elevation phase coupling on/off            
+
+Output:
+    Output of results are written to HDF5 file.               
+
+Details:
+    * 
+
+Preconditions:
+    * 
+
+Optional:
+    * 
+
+Minimum commandline:
+
+    python progname.py  --input_files=INPUTFILES
+
+where...
+
+    INPUTFILES: The fully qualified path to the input files. May be a directory or a file glob.
+
+
 Created by Geoff Cureton on 2011-03-06.
 Copyright (c) 2011 Geoff Cureton. All rights reserved.
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+                                                          
 """
 
 file_Date = '$Date$'
