@@ -5,3 +5,11 @@ import numpy as np
 import cumulantFunctionSimulate as cFS
 reload(cFS.elevPowerSpectrum);reload(cFS.cumulantFunctionSimulate)
 pl.close('all');cFS.cumulantFunctionSimulate.cumulantFunctionSimulate(4096,512,0.02,200,'phillips',3,0)
+
+
+
+#################
+
+python cumulantFunctionSimulate.py -n 4096 -N 512 -d 0.02 -r 1000 -S 'phillips_3'
+
+
