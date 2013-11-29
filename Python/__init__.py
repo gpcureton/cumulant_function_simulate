@@ -1,36 +1,10 @@
 #!/usr/bin/env python
 # encoding: utf-8
 """
-progname.py
-
-Purpose: ProgPurpose.
-
-Input:
-    * 
-
-Output:
-    * 
-
-Details:
-    * 
-
-Preconditions:
-    * 
-
-Optional:
-    * 
-
-Minimum commandline:
-
-    python progname.py  --input_files=INPUTFILES
-
-where...
-
-    INPUTFILES: The fully qualified path to the input files. May be a directory or a file glob.
-
+__init_.py
 
 Created by Geoff Cureton <geoff.cureton@ssec.wisc.edu> on 2011-09-30.
-Copyright (c) 2011-2013 University of Wisconsin Regents. All rights reserved.
+Copyright (c) 2011-2013 Geoff Cureton. All rights reserved.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by

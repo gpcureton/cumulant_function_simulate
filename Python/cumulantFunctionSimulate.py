@@ -4,14 +4,12 @@
 cumulantFunctionSimulate.py
 
 
-Purpose: This program works out an example of bispectra which      
-  in the paper by Kim & Powers (1979). We have two signals, 
-  one consisting of three independent components with the    
-  wavenumbers k1, k2, k3; and the other satisfying the      
-  rule k1 + k2 = k3. The bispectra of these two signals will
-  be computed to see  the effect of phase correlation on the
-  signal bispectra
-
+Purpose: This program simulates multiple elevation and slope realisations with
+    given spectra, introducing quadratic phase coupling at selected wavenumbers.
+    Glint realisations are computed from the slope realisations. The average 
+    elevation, slope and glint moments and cumulants, and moment and cumulant 
+    functions are computed. The results are written to a HDF5 file.
+    
 Input:
     N            : Data length                                
     NN           : Bispectrum data length                     
@@ -44,7 +42,7 @@ where...
 
 
 Created by Geoff Cureton on 2011-03-06.
-Copyright (c) 2011 Geoff Cureton. All rights reserved.
+Copyright (c) 2011-2013 Geoff Cureton. All rights reserved.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -172,6 +170,7 @@ class DataStatsStruct :
         self.mean     = self.cumulants[0]
         self.variance = self.cumulants[1]
         self.skewness = self.cumulants[2]/((self.cumulants[1])**1.5)
+
 
 def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 
@@ -796,13 +795,21 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
             glintStats[geoms].cumulants[2])
 
     """
-        Compute the average covariance functions.
+        compute the average elevation moment and cumulant functions.
     """
     elevSecondMomentFunction =  fft(totalElevAvgPower)
     elevSecondMomentFunction /= elevSecondMomentFunction.real[0]
+	#elevSecondCumulantFunction = (elevMoments[1]*elevSecondMomentFunction - elevMoments[0]^2.D)/elevCumulants[1]
+
+    """
+        compute the average slope moment and cumulant functions.
+    """
     slopeSecondMomentFunction =  fft(totalSlopeAvgPower)
     slopeSecondMomentFunction /= slopeSecondMomentFunction.real[0]
 
+    """
+        compute the average glint moment and cumulant functions.
+    """
     glintSecondMomentFunction = np.zeros((Geom.N_angles,N),dtype=double)
     for geoms in np.arange(Geom.N_angles) :
         glintSecondMomentFunction[geoms] = fft(totalGlintAvgPower[geoms]).real

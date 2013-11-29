@@ -1,36 +1,10 @@
 #!/usr/bin/env python
 # encoding: utf-8
 """
-progname.py
-
-Purpose: ProgPurpose.
-
-Input:
-    * 
-
-Output:
-    * 
-
-Details:
-    * 
-
-Preconditions:
-    * 
-
-Optional:
-    * 
-
-Minimum commandline:
-
-    python progname.py  --input_files=INPUTFILES
-
-where...
-
-    INPUTFILES: The fully qualified path to the input files. May be a directory or a file glob.
-
+utility.py
 
 Created by Geoff Cureton <geoff.cureton@ssec.wisc.edu> on 2011-09-30.
-Copyright (c) 2011-2013 University of Wisconsin Regents. All rights reserved.
+Copyright (c) 2011-2013 Geoff Cureton. All rights reserved.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -55,6 +29,149 @@ file_Id = '$Id$'
 __author__ = 'Geoff Cureton <geoff.cureton@ssec.wisc.edu>'
 __version__ = '$Id$'
 __docformat__ = 'Epytext'
+
+
+
+"""
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Routine to use the symmetry properties of the bispectrum of a real 
+;;; sequence to populate an entire NxN array from the primary octant. Takes
+;;; as input an NxN complex array, and the array size N, and returns the 
+;;; fully populated array in the input array
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+PRO bispectrumSymmetry,bispectrum,N
+
+	FOR j=0L,N/4L DO BEGIN
+		FOR i=j,(N/2L-j) DO BEGIN
+			bispectrum[(j LT 0L) ? N+(j) : j , (i LT 0L) ? N+(i) : i] = bispectrum[i,j]
+			bispectrum[(j LT 0L) ? N+(j) : j , (-i-j LT 0L) ? N+(-i-j) : -i-j] = bispectrum[i,j]
+			bispectrum[(-i-j LT 0L) ? N+(-i-j) : -i-j , (j LT 0L) ? N+(j) : j] = bispectrum[i,j]
+			bispectrum[(-i-j LT 0L) ? N+(-i-j) : -i-j , (i LT 0L) ? N+(i) : i] = bispectrum[i,j]
+			bispectrum[(i LT 0L) ? N+(i) : i , (-i-j LT 0L) ? N+(-i-j) : -i-j] = bispectrum[i,j]
+
+			bispectrum[(-i LT 0L) ? N+(-i) : -i , (-j LT 0L) ? N+(-j) : -j   ] = CONJ(bispectrum[i,j])
+			bispectrum[(-j LT 0L) ? N+(-j) : -j , (-i LT 0L) ? N+(-i) : -i   ] = CONJ(bispectrum[i,j])
+			bispectrum[(-j LT 0L) ? N+(-j) : -j , (i+j LT 0L) ? N+(i+j) : i+j] = CONJ(bispectrum[i,j])
+			bispectrum[(i+j LT 0L) ? N+(i+j) : i+j , (-j LT 0L) ? N+(-j) : -j] = CONJ(bispectrum[i,j])
+			bispectrum[(i+j LT 0L) ? N+(i+j) : i+j , (-i LT 0L) ? N+(-i) : -i] = CONJ(bispectrum[i,j])
+			bispectrum[(-i LT 0L) ? N+(-i) : -i , (i+j LT 0L) ? N+(i+j) : i+j] = CONJ(bispectrum[i,j])
+		ENDFOR
+	ENDFOR
+END
+"""
+def bispectrumSymmetry(bispectrum,N)
+	for j in range(N/4+1):
+		for i in range(N/2-j+1):
+			try :
+
+                bispectrum[ N+(j)    if (j < 0L)    else  j    , N+(i)    if  (i < 0L)    else  i    ]  = bispectrum[i,j]
+                bispectrum[ N+(j)    if (j < 0L)    else  j    , N+(-i-j) if  (-i-j < 0L) else  -i-j ]  = bispectrum[i,j]
+                bispectrum[ N+(-i-j) if (-i-j < 0L) else  -i-j , N+(j)    if  (j < 0L)    else  j    ]  = bispectrum[i,j]
+                bispectrum[ N+(-i-j) if (-i-j < 0L) else  -i-j , N+(i)    if  (i < 0L)    else  i    ]  = bispectrum[i,j]
+                bispectrum[ N+(i)    if (i < 0L)    else  i    , N+(-i-j) if  (-i-j < 0L) else  -i-j ]  = bispectrum[i,j]
+
+                bispectrum[ N+(-i)   if (-i < 0L)   else  -i   , N+(-j)   if  (-j < 0L)   else   -j   ] = np.conjugate(bispectrum[i,j])
+                bispectrum[ N+(-j)   if (-j < 0L)   else  -j   , N+(-i)   if  (-i < 0L)   else   -i   ] = np.conjugate(bispectrum[i,j])
+                bispectrum[ N+(-j)   if (-j < 0L)   else  -j   , N+(i+j)  if  (i+j < 0L)  else   i+j  ] = np.conjugate(bispectrum[i,j])
+                bispectrum[ N+(i+j)  if (i+j < 0L)  else  i+j  , N+(-j)   if  (-j < 0L)   else   -j   ] = np.conjugate(bispectrum[i,j])
+                bispectrum[ N+(i+j)  if (i+j < 0L)  else  i+j  , N+(-i)   if  (-i < 0L)   else   -i   ] = np.conjugate(bispectrum[i,j])
+                bispectrum[ N+(-i)   if (-i < 0L)   else  -i   , N+(i+j)  if  (i+j < 0L)  else   i+j  ] = np.conjugate(bispectrum[i,j])
+
+			except IndexError :
+				print "(i,j) = ",i,j
+				#print "Property ",symProp
+				sys.exit(0)
+
+"""
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Routine to use the symmetry properties of the bispectrum of a real 
+;;; sequence to populate an entire NxN bicoherence array from the primary 
+;;; octant. Takes as input an NxN real array, and the array size N, and 
+;;; returns the fully populated array in the input array
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+PRO bicoherenceSymmetry,bicoherence,N
+
+	FOR j=0L,N/4L DO BEGIN
+		FOR i=j,(N/2L-j) DO BEGIN
+			bicoherence[ (j LT 0L)    ? N+(j)    : j    , (i LT 0L)    ? N+(i)    : i   ] = bicoherence[i,j]
+			bicoherence[ (j LT 0L)    ? N+(j)    : j    , (-i-j LT 0L) ? N+(-i-j) : -i-j] = bicoherence[i,j]
+			bicoherence[ (-i-j LT 0L) ? N+(-i-j) : -i-j , (j LT 0L)    ? N+(j)    : j   ] = bicoherence[i,j]
+			bicoherence[ (-i-j LT 0L) ? N+(-i-j) : -i-j , (i LT 0L)    ? N+(i)    : i   ] = bicoherence[i,j]
+			bicoherence[ (i LT 0L)    ? N+(i)    : i    , (-i-j LT 0L) ? N+(-i-j) : -i-j] = bicoherence[i,j]
+
+			bicoherence[ (-i LT 0L)   ? N+(-i)   : -i   , (-j LT 0L)  ? N+(-j)  : -j    ] = bicoherence[i,j]
+			bicoherence[ (-j LT 0L)   ? N+(-j)   : -j   , (-i LT 0L)  ? N+(-i)  : -i    ] = bicoherence[i,j]
+			bicoherence[ (-j LT 0L)   ? N+(-j)   : -j   , (i+j LT 0L) ? N+(i+j) : i+j   ] = bicoherence[i,j]
+			bicoherence[ (i+j LT 0L)  ? N+(i+j)  : i+j  , (-j LT 0L)  ? N+(-j)  : -j    ] = bicoherence[i,j]
+			bicoherence[ (i+j LT 0L)  ? N+(i+j)  : i+j  , (-i LT 0L)  ? N+(-i)  : -i    ] = bicoherence[i,j]
+			bicoherence[ (-i LT 0L)   ? N+(-i)   : -i   , (i+j LT 0L) ? N+(i+j) : i+j   ] = bicoherence[i,j]
+		ENDFOR
+	ENDFOR
+END
+"""
+def bicoherenceSymmetry(bicoherence,N)
+	for j in range(N/4+1):
+		for i in range(N/2-j+1):
+			try :
+
+                bicoherence[ N+(j)    if (j < 0L)    else  j    , N+(i)    if  (i < 0L)    else  i    ]  = bicoherence[i,j]
+                bicoherence[ N+(j)    if (j < 0L)    else  j    , N+(-i-j) if  (-i-j < 0L) else  -i-j ]  = bicoherence[i,j]
+                bicoherence[ N+(-i-j) if (-i-j < 0L) else  -i-j , N+(j)    if  (j < 0L)    else  j    ]  = bicoherence[i,j]
+                bicoherence[ N+(-i-j) if (-i-j < 0L) else  -i-j , N+(i)    if  (i < 0L)    else  i    ]  = bicoherence[i,j]
+                bicoherence[ N+(i)    if (i < 0L)    else  i    , N+(-i-j) if  (-i-j < 0L) else  -i-j ]  = bicoherence[i,j]
+
+                bicoherence[ N+(-i)   if (-i < 0L)   else  -i   , N+(-j)   if  (-j < 0L)   else   -j   ] = bicoherence[i,j]
+                bicoherence[ N+(-j)   if (-j < 0L)   else  -j   , N+(-i)   if  (-i < 0L)   else   -i   ] = bicoherence[i,j]
+                bicoherence[ N+(-j)   if (-j < 0L)   else  -j   , N+(i+j)  if  (i+j < 0L)  else   i+j  ] = bicoherence[i,j]
+                bicoherence[ N+(i+j)  if (i+j < 0L)  else  i+j  , N+(-j)   if  (-j < 0L)   else   -j   ] = bicoherence[i,j]
+                bicoherence[ N+(i+j)  if (i+j < 0L)  else  i+j  , N+(-i)   if  (-i < 0L)   else   -i   ] = bicoherence[i,j]
+                bicoherence[ N+(-i)   if (-i < 0L)   else  -i   , N+(i+j)  if  (i+j < 0L)  else   i+j  ] = bicoherence[i,j]
+
+			except IndexError :
+				print "(i,j) = ",i,j
+				#print "Property ",symProp
+				sys.exit(0)
+
+
+"""
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Routine to use the symmetry properties of the bicovariance of a real 
+;;; sequence to populate an entire NxN array from the primary sextant. Takes
+;;; as input an NxN complex array, and the array size N, and returns the 
+;;; fully populated array in the input array
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+PRO biCovarianceSymmetry,biCovariance,N
+
+	FOR i=0L,N/2L DO BEGIN
+		FOR j=0L,i DO BEGIN
+			biCovariance[(j LT 0L) ? N+(j) : j , (i LT 0L) ? N+(i) : i] = biCovariance[i,j]
+			biCovariance[(-j LT 0L) ? N+(-j) : -j , (i-j LT 0L) ? N+(i-j) : i-j] = biCovariance[i,j]
+			biCovariance[(i-j LT 0L) ? N+(i-j) : i-j , (-j LT 0L) ? N+(-j) : -j] = biCovariance[i,j]
+			biCovariance[(j-i LT 0L) ? N+(j-i) : j-i , (-i LT 0L) ? N+(-i) : -i] = biCovariance[i,j]
+			biCovariance[(-i LT 0L) ? N+(-i) : -i , (j-i LT 0L) ? N+(j-i) : j-i] = biCovariance[i,j]
+		ENDFOR
+	ENDFOR
+END
+
+"""
+def biCovarianceSymmetry(biCovariance,NN)
+	for i in range(NN/2+1):
+		for j in range(i+1):
+			try :
+
+				symProp=5 ; biCovariance[ NN+(j)   if (  j < 0L)  else   j , NN+(i)    if (  i < 0L) else   i ] = biCovariance[i,j]
+				symProp=4 ; biCovariance[ NN+(-j)  if ( -j < 0L)  else  -j , NN+(i-j)  if (i-j < 0L) else i-j ] = biCovariance[i,j]
+				symProp=3 ; biCovariance[ NN+(i-j) if (i-j < 0L)  else i-j , NN+(-j)   if ( -j < 0L) else  -j ] = biCovariance[i,j]
+				symProp=2 ; biCovariance[ NN+(j-i) if (j-i < 0L)  else j-i , NN+(-i)   if ( -i < 0L) else  -i ] = biCovariance[i,j]
+				symProp=1 ; biCovariance[ NN+(-i)  if ( -i < 0L)  else  -i , NN+(j-i)  if (j-i < 0L) else j-i ] = biCovariance[i,j]
+
+			except IndexError :
+				print "(i,j) = ",i,j
+				print "Property ",symProp
+				sys.exit(0)
 
 
 def plotInstance() :
@@ -226,114 +343,4 @@ def plotInstance() :
     #pl.legend()
     #pl.title("Average Curvature Power Spectrum")
     #pl.show()
-
-
-"""
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Routine to return the glint cumulants from the glint moment(s), for 
-;;; a number of geometries
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-PRO glintCumulantsFromMoments,glintMoments,glintCumulants
-
-	PRINT,'N_ELEMENTS: ',N_ELEMENTS(glintCumulants[0,*])
-	FOR geometry=0L,N_ELEMENTS(glintCumulants[0,*])-1L DO BEGIN
-		glintCumulants[0,geometry] = glintMoments[geometry]
-		glintCumulants[1,geometry] = glintMoments[geometry]-glintMoments[geometry]^2.D
-		glintCumulants[2,geometry] = glintMoments[geometry] $
-			-3.D*glintMoments[geometry]^2.D $
-			+2.D*glintMoments[geometry]^3.D
-	ENDFOR
-;	glintCumulants[*,0] = glintMoments[*]
-;	glintCumulants[*,1] = glintMoments[*]-glintMoments[*]^2.D
-;	glintCumulants[*,2] = glintMoments[*]-3.D*glintMoments[*]*glintMoments[*]+2.D*glintMoments[*]^3.D
-END
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Routine to return the cumulants from the moments
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-PRO cumulantsFromMoments,dataMoments,dataCumulants
-
-	dataCumulants[0] = dataMoments[0]
-	dataCumulants[1] = dataMoments[1]-dataMoments[0]^2.D
-	dataCumulants[2] = dataMoments[2]-3.D*dataMoments[0]*dataMoments[1]+2.D*dataMoments[0]^3.D
-
-END
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Routine to use the symmetry properties of the bispectrum of a real 
-;;; sequence to populate an entire NxN array from the primary octant. Takes
-;;; as input an NxN complex array, and the array size N, and returns the 
-;;; fully populated array in the input array
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-PRO bispectrumSymmetry,bispectrum,N
-
-	FOR j=0L,N/4L DO BEGIN
-		FOR i=j,(N/2L-j) DO BEGIN
-			bispectrum[(j LT 0L) ? N+(j) : j , (i LT 0L) ? N+(i) : i] = bispectrum[i,j]
-			bispectrum[(j LT 0L) ? N+(j) : j , (-i-j LT 0L) ? N+(-i-j) : -i-j] = bispectrum[i,j]
-			bispectrum[(-i-j LT 0L) ? N+(-i-j) : -i-j , (j LT 0L) ? N+(j) : j] = bispectrum[i,j]
-			bispectrum[(-i-j LT 0L) ? N+(-i-j) : -i-j , (i LT 0L) ? N+(i) : i] = bispectrum[i,j]
-			bispectrum[(i LT 0L) ? N+(i) : i , (-i-j LT 0L) ? N+(-i-j) : -i-j] = bispectrum[i,j]
-
-			bispectrum[(-i LT 0L) ? N+(-i) : -i , (-j LT 0L) ? N+(-j) : -j   ] = CONJ(bispectrum[i,j])
-			bispectrum[(-j LT 0L) ? N+(-j) : -j , (-i LT 0L) ? N+(-i) : -i   ] = CONJ(bispectrum[i,j])
-			bispectrum[(-j LT 0L) ? N+(-j) : -j , (i+j LT 0L) ? N+(i+j) : i+j] = CONJ(bispectrum[i,j])
-			bispectrum[(i+j LT 0L) ? N+(i+j) : i+j , (-j LT 0L) ? N+(-j) : -j] = CONJ(bispectrum[i,j])
-			bispectrum[(i+j LT 0L) ? N+(i+j) : i+j , (-i LT 0L) ? N+(-i) : -i] = CONJ(bispectrum[i,j])
-			bispectrum[(-i LT 0L) ? N+(-i) : -i , (i+j LT 0L) ? N+(i+j) : i+j] = CONJ(bispectrum[i,j])
-		ENDFOR
-	ENDFOR
-END
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Routine to use the symmetry properties of the bispectrum of a real 
-;;; sequence to populate an entire NxN bicoherence array from the primary 
-;;; octant. Takes as input an NxN real array, and the array size N, and 
-;;; returns the fully populated array in the input array
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-PRO bicoherenceSymmetry,bicoherence,N
-
-	FOR j=0L,N/4L DO BEGIN
-		FOR i=j,(N/2L-j) DO BEGIN
-			bicoherence[(j LT 0L) ? N+(j) : j , (i LT 0L) ? N+(i) : i] = bicoherence[i,j]
-			bicoherence[(j LT 0L) ? N+(j) : j , (-i-j LT 0L) ? N+(-i-j) : -i-j] = bicoherence[i,j]
-			bicoherence[(-i-j LT 0L) ? N+(-i-j) : -i-j , (j LT 0L) ? N+(j) : j] = bicoherence[i,j]
-			bicoherence[(-i-j LT 0L) ? N+(-i-j) : -i-j , (i LT 0L) ? N+(i) : i] = bicoherence[i,j]
-			bicoherence[(i LT 0L) ? N+(i) : i , (-i-j LT 0L) ? N+(-i-j) : -i-j] = bicoherence[i,j]
-
-			bicoherence[(-i LT 0L) ? N+(-i) : -i , (-j LT 0L) ? N+(-j) : -j   ] = bicoherence[i,j]
-			bicoherence[(-j LT 0L) ? N+(-j) : -j , (-i LT 0L) ? N+(-i) : -i   ] = bicoherence[i,j]
-			bicoherence[(-j LT 0L) ? N+(-j) : -j , (i+j LT 0L) ? N+(i+j) : i+j] = bicoherence[i,j]
-			bicoherence[(i+j LT 0L) ? N+(i+j) : i+j , (-j LT 0L) ? N+(-j) : -j] = bicoherence[i,j]
-			bicoherence[(i+j LT 0L) ? N+(i+j) : i+j , (-i LT 0L) ? N+(-i) : -i] = bicoherence[i,j]
-			bicoherence[(-i LT 0L) ? N+(-i) : -i , (i+j LT 0L) ? N+(i+j) : i+j] = bicoherence[i,j]
-		ENDFOR
-	ENDFOR
-END
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Routine to use the symmetry properties of the bicovariance of a real 
-;;; sequence to populate an entire NxN array from the primary sextant. Takes
-;;; as input an NxN complex array, and the array size N, and returns the 
-;;; fully populated array in the input array
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-PRO biCovarianceSymmetry,biCovariance,N
-
-	FOR i=0L,N/2L DO BEGIN
-		FOR j=0L,i DO BEGIN
-			biCovariance[(j LT 0L) ? N+(j) : j , (i LT 0L) ? N+(i) : i] = biCovariance[i,j]
-			biCovariance[(-j LT 0L) ? N+(-j) : -j , (i-j LT 0L) ? N+(i-j) : i-j] = biCovariance[i,j]
-			biCovariance[(i-j LT 0L) ? N+(i-j) : i-j , (-j LT 0L) ? N+(-j) : -j] = biCovariance[i,j]
-			biCovariance[(j-i LT 0L) ? N+(j-i) : j-i , (-i LT 0L) ? N+(-i) : -i] = biCovariance[i,j]
-			biCovariance[(-i LT 0L) ? N+(-i) : -i , (j-i LT 0L) ? N+(j-i) : j-i] = biCovariance[i,j]
-		ENDFOR
-	ENDFOR
-END
-
-"""
 
