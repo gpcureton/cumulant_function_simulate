@@ -1,32 +1,78 @@
 PRO cumulantFunctionSimulate,N,NN,delta_x,N_r,spectrumType,specExp,powWindType,bispWindType,nlSwitch
 
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	; This program works out an example of bispectra which         ;
-	; in the paper by Kim & Powers (1979). We have two signals,    ;
-	; one consisting of three independent components with the      ; 
-	; wavenumbers k1, k2, k3; and the other satisfying the         ;
-	; rule k1 + k2 = k3. The bispectra of these two signals will   ;
-	; be computed to see  the effect of phase correlation on the   ;
-	; signal bispectra                                             ;
-	;                                                              ;
-	;                                                              ;
-	; Input parameters are...                                      ;
-	;                                                              ;
-	; N            : Data length                                   ;
-	; NN           : Bispectrum data length                        ;
-	; delta_x      : Spatial increment in meters                   ;
-	; N_r          : Number of realisations                        ;
-	; spectrumType : Form of the elevation power spectrum          ;
-	; powWindType  : Form of the glint power spectrum windowing    ;
-	; bispWindType : Form of the glint bispectrum windowing        ;
-	; specExp      : Elevation power spectrum is proportional to   ;
-	;                k^{-specExp}                                  ;
-	; nlSwitch     : Elevation phase coupling on/off               ;
-	;                                                              ;
-	; Output of results are written to HDF4 file.                  ;
-	;                                                              ;
-	; Geoff Cureton, April 2009                                    ;
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	;+
+	; NAME:
+	;    cumulantFunctionSimulate
+	;
+	; PURPOSE:
+	;    This program simulates multiple elevation and slope realisations with
+    ;    given spectra, introducing quadratic phase coupling at selected wavenumbers.
+    ;    Glint realisations are computed from the slope realisations. The average 
+    ;    elevation, slope and glint moments and cumulants, and moment and cumulant 
+    ;    functions are computed. The results are written to a HDF4 file.
+	;
+	; CATEGORY:
+	;    Main routine
+	;
+	; CALLING SEQUENCE:
+	;
+	; INPUTS:
+	;    N            : Data length
+	;    NN           : Bispectrum data length
+	;    delta_x      : Spatial increment in meters
+	;    N_r          : Number of realisations
+	;    spectrumType : Form of the elevation power spectrum
+	;    powWindType  : Form of the glint power spectrum windowing
+	;    bispWindType : Form of the glint bispectrum windowing
+	;    specExp      : Elevation power spectrum is proportional to
+	;                   k^{-specExp}
+	;    nlSwitch     : Elevation phase coupling on/off
+	;
+	; OPTIONAL INPUTS:
+	;    None.
+	;
+	; KEYWORD PARAMETERS:
+	;
+	; OUTPUTS:
+	;
+	; OPTIONAL OUTPUTS:
+	;    None
+	;
+	; COMMON BLOCKS:
+	;    None
+	;
+	; SIDE EFFECTS:
+	;    None.
+	;
+	; RESTRICTIONS:
+	;
+	; EXAMPLE:
+	;
+	;
+	; Created by Geoff Cureton <geoff.cureton@ssec.wisc.edu> on 2009-04-15.
+	; Copyright (c) 2009-2013 Geoff Cureton. All rights reserved.
+	; 
+	; file_Date = '$Date$'
+	; file_Revision = '$Revision$'
+	; file_Author = '$Author$'
+	; file_HeadURL = '$HeadURL$'
+	; file_Id = '$Id$'
+	;
+	;
+	;     This program is free software: you can redistribute it and/or modify
+	;     it under the terms of the GNU General Public License as published by
+	;     the Free Software Foundation, either version 3 of the License, or
+	;     (at your option) any later version.
+	; 
+	;     This program is distributed in the hope that it will be useful,
+	;     but WITHOUT ANY WARRANTY; without even the implied warranty of
+	;     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	;     GNU General Public License for more details.
+	; 
+	;     You should have received a copy of the GNU General Public License
+	;     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+	;-
+
 
 	;;; Turn on error reporting
 	!EXCEPT=1
