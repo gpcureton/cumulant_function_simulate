@@ -69,7 +69,10 @@ __author__ = 'G.P. Cureton <geoff.cureton@physics.org>'
 __version__ = '$Id$'
 __docformat__ = 'Epytext'
 
-import sys, time, string, getopt, copy
+import os, sys, logging, traceback
+from os import path,uname,environ
+
+import string, copy
 import numpy as np
 from numpy import pi,sin,cos,tan,sqrt,abs,exp
 from numpy.fft import fft,ifft
@@ -86,18 +89,19 @@ import time
 #matplotlib.use('Agg')
 #from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 
-#matplotlib.use('WXAgg')
-#from matplotlib.backends.backend_wxagg import FigureCanvasAgg as FigureCanvas
-
 # This must come *after* the backend is specified.
 #import matplotlib.pyplot as ppl
-
-import optparse as optparse
 
 import tables as pytables
 from tables import exceptions as pyEx
 
+# every module should have a LOG object
+sourcename= file_Id.split(" ")
+#LOG = logging.getLogger(sourcename[1])
+LOG = logging.getLogger(__file__)
+
 from elevPowerSpectrum import phillips_elev_spectrum
+
 
 # Initialise the scale structure
 class ScaleStruct :
@@ -1729,15 +1733,133 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 	print  'Write Operation Completed'
 	print  ''
 
-
-
-
-
-
 	
 END
 
 """
+
+def _argparse():
+
+    import argparse as argparse
+
+    spectrumChoices=['phillips_3','phillips_4','gaussian']
+
+    defaults = {'N':1024,
+                'NN':64,
+                'delta_x':0.02,
+                'N_r':100,
+                'spectrumType':'phillips_3',
+                'nlSwitch':False,
+                'outputFile':"outSimulatedGlint.h5",
+                }
+
+    description = "This is a brief description of %prog"
+    usage = "usage: %prog [mandatory args] [optional args]"
+    version = __version__
+
+    parser = argparse.ArgumentParser()
+
+    # Positional arguments...
+    #parser.add_argument("x", type=int, help="the base")
+    #parser.add_argument("y", type=int, help="the exponent")
+
+    # Mandatory arguments...
+    parser.add_argument('-n','--numdatapoints',
+                      action="store",
+                      dest="N" ,
+                      default=1024,
+                      type=int,
+                      help="Number of points of the glint dataset. Must be an integer power of 2. [default: {}]".format(defaults['N']),
+                      metavar="N")
+
+    parser.add_argument('-N','--num2Dpoints',
+                      action="store",
+                      dest="NN" ,
+                      default=64,
+                      type=int,
+                      help="Number of points of the bispectrum array side. Must be an integer power of 2. [default: {}]".format(defaults['NN']),
+                      metavar="NN")
+
+    parser.add_argument('-d','--deltax',
+                      action="store",
+                      dest="delta_x",
+                      default=0.02,
+                      type=float,
+                      help="The spatial increment in meters. [default: {}]".format(defaults['delta_x']),
+                      metavar="DELTA_X")
+
+    parser.add_argument('-r','--num_realisations',
+                      action="store",
+                      dest="N_r" ,
+                      default=100,
+                      type=int,
+                      help="Number of realisations. [default: {}]".format(defaults['N_r']),
+                      metavar="NUMREALS")
+
+    parser.add_argument('-S','--spectrum_type',
+                      action="store",
+                      dest="spectrumType",
+                      default='phillips_3',
+                      type=str,
+                      help='''Form of the elevation power spectrum.\n\n
+                                                   Possible values are...
+                                                   {}. [default: {}]
+                                                   '''.format(spectrumChoices.__str__()[1:-1],defaults['spectrumType']),
+                      metavar="SPECTRUMTYPE")
+
+    # Optional arguments
+    parser.add_argument('-l','--nonlinear_modes',
+                      action="store_true",
+                      dest="nlSwitch",
+                      help="Switch on nonlinear modes. [default: {}]".format(defaults['nlSwitch']))
+
+    parser.add_argument('-o','--output_file',
+                      action="store",
+                      dest="outputFile",
+                      default="outSimulatedGlint.h5",
+                      type=str,
+                      help="The full path of the output HDF5 file. [default: {}]".format(defaults['outputFile']),
+                      metavar="OUTFILE")
+
+    parser.add_argument("-v", "--verbose",
+                      dest='verbosity',
+                      action="count", 
+                      default=0,
+                      help='each occurrence increases verbosity 1 level from ERROR: -v=WARNING -vv=INFO -vvv=DEBUG')
+
+    args = parser.parse_args()
+
+    print args
+
+    # Check that all of the mandatory args are given. If one or more 
+    # are missing, print error message and exit...
+    #mandatories = ['N', 'NN','delta_x','N_r', 'spectrumType','nlSwitch']
+    #mand_errors = ["Missing mandatory argument [-n N            | --numdatapoints=N]",
+                   #"Missing mandatory argument [-N NN           | --num2Dpoints=NN]",
+                   #"Missing mandatory argument [-d delta_x      | --deltax=delta_x]",
+                   #"Missing mandatory argument [-r N_r          | --num_realisations=N_r]",
+                   #"Missing mandatory argument [-S spectrumType | --spectrum_type=spectrumType]"
+                  #]
+    #isMissingMand = False
+    #for m,m_err in zip(mandatories,mand_errors):
+        #if not args.__dict__[m]:
+            #isMissingMand = True
+            #print m_err
+    #if isMissingMand :
+        #parser.error("Incomplete mandatory arguments, aborting...")
+
+
+    # Set up the logging
+    #console_logFormat = '%(asctime)s : %(name)-12s: %(levelname)-8s %(message)s'
+    #console_logFormat = '%(levelname)s:%(name)s:%(msg)s') # [%(filename)s:%(lineno)d]'
+    console_logFormat = '%(asctime)s : (%(levelname)s):%(filename)s:%(funcName)s:%(lineno)d:  %(message)s'
+    dateFormat = '%Y-%m-%d %H:%M:%S'
+    levels = [logging.ERROR, logging.WARN, logging.INFO, logging.DEBUG]
+    logging.basicConfig(level = levels[args.verbosity], 
+            format = console_logFormat, 
+            datefmt = dateFormat)
+
+    return args
 
 
 ###################################################
@@ -1746,104 +1868,21 @@ END
 
 def main():
 
-    spectrumChoices=['phillips_3','phillips_4','gaussian']
+    args = _argparse()
 
-    description = \
-    '''
-    This is a brief description of %prog
-    '''
-    usage = "usage: %prog [mandatory args] [options]"
-    version = __version__
-    parser = optparse.OptionParser(description=description,usage=usage,version=version)
-
-    # Mandatory arguments
-    mandatoryGroup = optparse.OptionGroup(parser, "Mandatory Arguments",
-                        "At a minimum these arguments must be specified")
-
-    mandatoryGroup.add_option('-n','--numdatapoints',
-                      action="store",
-                      dest="N" ,
-                      #default='1024',
-                      type="int",
-                      help="Number of points of the glint dataset. Must be an integer power of 2")
-    mandatoryGroup.add_option('-N','--num2Dpoints',
-                      action="store",
-                      dest="NN" ,
-                      #default='64',
-                      type="int",
-                      help="Number of points of the bispectrum array side. Must be an integer power of 2")
-    mandatoryGroup.add_option('-d','--deltax',
-                      action="store",
-                      dest="delta_x",
-                      default='0.2',
-                      type="float",
-                      help="The spatial increment in meters. [default: %default]")
-    mandatoryGroup.add_option('-r','--num_realisations',
-                      action="store",
-                      dest="N_r" ,
-                      #default='100',
-                      type="int",
-                      help="Number of realisations")
-    mandatoryGroup.add_option('-S','--spectrum_type',
-                      action="store",
-                      dest="spectrumType",
-                      type="string",
-                      help='''Form of the elevation power spectrum.\n\n
-                                                   Possible values are...
-                                                   %s
-                                                   ''' % (spectrumChoices.__str__()[1:-1]))
-
-    parser.add_option_group(mandatoryGroup)
-
-    # Optional arguments
-    optionalGroup = optparse.OptionGroup(parser, "Extra Options",
-                        "These options may be used to customize plot characteristics.")
-
-    optionalGroup.add_option('-l','--nonlinear_modes',
-                      action="store_true",
-                      dest="nlSwitch",
-                      help="Switch on nonlinear modes.")
-    optionalGroup.add_option('-o','--output_file',
-                      action="store",
-                      dest="outputFile",
-                      default="outGrid.h5",
-                      type="string",
-                      help="The full path of the output HDF5 file. [default: %default]")
-
-
-    parser.add_option_group(optionalGroup)
-
-    # Parse the arguments from the command line
-    (options, args) = parser.parse_args()
-
-    # Check that all of the mandatory options are given. If one or more 
-    # are missing, print error message and exit...
-    mandatories = ['N', 'NN','delta_x','N_r', 'spectrumType','nlSwitch']
-    mand_errors = ["Missing mandatory argument [-n N            | --numdatapoints=N]",
-                   "Missing mandatory argument [-N NN           | --num2Dpoints=NN]",
-                   "Missing mandatory argument [-d delta_x      | --deltax=delta_x]",
-                   "Missing mandatory argument [-r N_r          | --num_realisations=N_r]",
-                   "Missing mandatory argument [-S spectrumType | --spectrum_type=spectrumType]"
-                  ]
-    isMissingMand = False
-    for m,m_err in zip(mandatories,mand_errors):
-        if not options.__dict__[m]:
-            isMissingMand = True
-            print m_err
-    if isMissingMand :
-        parser.error("Incomplete mandatory arguments, aborting...")
-
-    N            = options.N
-    NN           = options.NN
-    delta_x      = options.delta_x
-    N_r          = options.N_r
-    spectrumType = options.spectrumType
-    specExp      = 4 if options.spectrumType=='phillips_4' else 3
-    nlSwitch     = options.nlSwitch
+    N            = args.N
+    NN           = args.NN
+    delta_x      = args.delta_x
+    N_r          = args.N_r
+    spectrumType = args.spectrumType
+    specExp      = 4 if args.spectrumType=='phillips_4' else 3
+    nlSwitch     = args.nlSwitch
 
     cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch)
 
+    LOG.info("Exiting...")
     sys.exit(0)
+
 
 if __name__ == '__main__':
     main()
