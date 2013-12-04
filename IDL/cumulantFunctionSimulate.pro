@@ -163,7 +163,7 @@ PRO cumulantFunctionSimulate,N,NN,delta_x,N_r,spectrumType,specExp,powWindType,b
 	ENDCASE
 
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	;;; Check some of the data from the POWER structure      	 ;;;
+	;;; Check some of the data from the POWER structure			 ;;;
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 	PRINT,"First component indicies for free waves ...",FORMAT='(/A)'

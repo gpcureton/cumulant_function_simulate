@@ -42,28 +42,28 @@ __docformat__ = 'Epytext'
 
 PRO bispectrumSymmetry,bispectrum,N
 
-	FOR j=0L,N/4L DO BEGIN
-		FOR i=j,(N/2L-j) DO BEGIN
-			bispectrum[(j LT 0L) ? N+(j) : j , (i LT 0L) ? N+(i) : i] = bispectrum[i,j]
-			bispectrum[(j LT 0L) ? N+(j) : j , (-i-j LT 0L) ? N+(-i-j) : -i-j] = bispectrum[i,j]
-			bispectrum[(-i-j LT 0L) ? N+(-i-j) : -i-j , (j LT 0L) ? N+(j) : j] = bispectrum[i,j]
-			bispectrum[(-i-j LT 0L) ? N+(-i-j) : -i-j , (i LT 0L) ? N+(i) : i] = bispectrum[i,j]
-			bispectrum[(i LT 0L) ? N+(i) : i , (-i-j LT 0L) ? N+(-i-j) : -i-j] = bispectrum[i,j]
+    FOR j=0L,N/4L DO BEGIN
+        FOR i=j,(N/2L-j) DO BEGIN
+            bispectrum[(j LT 0L) ? N+(j) : j , (i LT 0L) ? N+(i) : i] = bispectrum[i,j]
+            bispectrum[(j LT 0L) ? N+(j) : j , (-i-j LT 0L) ? N+(-i-j) : -i-j] = bispectrum[i,j]
+            bispectrum[(-i-j LT 0L) ? N+(-i-j) : -i-j , (j LT 0L) ? N+(j) : j] = bispectrum[i,j]
+            bispectrum[(-i-j LT 0L) ? N+(-i-j) : -i-j , (i LT 0L) ? N+(i) : i] = bispectrum[i,j]
+            bispectrum[(i LT 0L) ? N+(i) : i , (-i-j LT 0L) ? N+(-i-j) : -i-j] = bispectrum[i,j]
 
-			bispectrum[(-i LT 0L) ? N+(-i) : -i , (-j LT 0L) ? N+(-j) : -j   ] = CONJ(bispectrum[i,j])
-			bispectrum[(-j LT 0L) ? N+(-j) : -j , (-i LT 0L) ? N+(-i) : -i   ] = CONJ(bispectrum[i,j])
-			bispectrum[(-j LT 0L) ? N+(-j) : -j , (i+j LT 0L) ? N+(i+j) : i+j] = CONJ(bispectrum[i,j])
-			bispectrum[(i+j LT 0L) ? N+(i+j) : i+j , (-j LT 0L) ? N+(-j) : -j] = CONJ(bispectrum[i,j])
-			bispectrum[(i+j LT 0L) ? N+(i+j) : i+j , (-i LT 0L) ? N+(-i) : -i] = CONJ(bispectrum[i,j])
-			bispectrum[(-i LT 0L) ? N+(-i) : -i , (i+j LT 0L) ? N+(i+j) : i+j] = CONJ(bispectrum[i,j])
-		ENDFOR
-	ENDFOR
+            bispectrum[(-i LT 0L) ? N+(-i) : -i , (-j LT 0L) ? N+(-j) : -j   ] = CONJ(bispectrum[i,j])
+            bispectrum[(-j LT 0L) ? N+(-j) : -j , (-i LT 0L) ? N+(-i) : -i   ] = CONJ(bispectrum[i,j])
+            bispectrum[(-j LT 0L) ? N+(-j) : -j , (i+j LT 0L) ? N+(i+j) : i+j] = CONJ(bispectrum[i,j])
+            bispectrum[(i+j LT 0L) ? N+(i+j) : i+j , (-j LT 0L) ? N+(-j) : -j] = CONJ(bispectrum[i,j])
+            bispectrum[(i+j LT 0L) ? N+(i+j) : i+j , (-i LT 0L) ? N+(-i) : -i] = CONJ(bispectrum[i,j])
+            bispectrum[(-i LT 0L) ? N+(-i) : -i , (i+j LT 0L) ? N+(i+j) : i+j] = CONJ(bispectrum[i,j])
+        ENDFOR
+    ENDFOR
 END
 """
 def bispectrumSymmetry(bispectrum,N)
-	for j in range(N/4+1):
-		for i in range(N/2-j+1):
-			try :
+    for j in range(N/4+1):
+        for i in range(N/2-j+1):
+            try :
 
                 bispectrum[ N+(j)    if (j < 0L)    else  j    , N+(i)    if  (i < 0L)    else  i    ]  = bispectrum[i,j]
                 bispectrum[ N+(j)    if (j < 0L)    else  j    , N+(-i-j) if  (-i-j < 0L) else  -i-j ]  = bispectrum[i,j]
@@ -78,10 +78,10 @@ def bispectrumSymmetry(bispectrum,N)
                 bispectrum[ N+(i+j)  if (i+j < 0L)  else  i+j  , N+(-i)   if  (-i < 0L)   else   -i   ] = np.conjugate(bispectrum[i,j])
                 bispectrum[ N+(-i)   if (-i < 0L)   else  -i   , N+(i+j)  if  (i+j < 0L)  else   i+j  ] = np.conjugate(bispectrum[i,j])
 
-			except IndexError :
-				print "(i,j) = ",i,j
-				#print "Property ",symProp
-				sys.exit(0)
+            except IndexError :
+                print "(i,j) = ",i,j
+                #print "Property ",symProp
+                sys.exit(0)
 
 """
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -93,28 +93,28 @@ def bispectrumSymmetry(bispectrum,N)
 
 PRO bicoherenceSymmetry,bicoherence,N
 
-	FOR j=0L,N/4L DO BEGIN
-		FOR i=j,(N/2L-j) DO BEGIN
-			bicoherence[ (j LT 0L)    ? N+(j)    : j    , (i LT 0L)    ? N+(i)    : i   ] = bicoherence[i,j]
-			bicoherence[ (j LT 0L)    ? N+(j)    : j    , (-i-j LT 0L) ? N+(-i-j) : -i-j] = bicoherence[i,j]
-			bicoherence[ (-i-j LT 0L) ? N+(-i-j) : -i-j , (j LT 0L)    ? N+(j)    : j   ] = bicoherence[i,j]
-			bicoherence[ (-i-j LT 0L) ? N+(-i-j) : -i-j , (i LT 0L)    ? N+(i)    : i   ] = bicoherence[i,j]
-			bicoherence[ (i LT 0L)    ? N+(i)    : i    , (-i-j LT 0L) ? N+(-i-j) : -i-j] = bicoherence[i,j]
+    FOR j=0L,N/4L DO BEGIN
+        FOR i=j,(N/2L-j) DO BEGIN
+            bicoherence[ (j LT 0L)    ? N+(j)    : j    , (i LT 0L)    ? N+(i)    : i   ] = bicoherence[i,j]
+            bicoherence[ (j LT 0L)    ? N+(j)    : j    , (-i-j LT 0L) ? N+(-i-j) : -i-j] = bicoherence[i,j]
+            bicoherence[ (-i-j LT 0L) ? N+(-i-j) : -i-j , (j LT 0L)    ? N+(j)    : j   ] = bicoherence[i,j]
+            bicoherence[ (-i-j LT 0L) ? N+(-i-j) : -i-j , (i LT 0L)    ? N+(i)    : i   ] = bicoherence[i,j]
+            bicoherence[ (i LT 0L)    ? N+(i)    : i    , (-i-j LT 0L) ? N+(-i-j) : -i-j] = bicoherence[i,j]
 
-			bicoherence[ (-i LT 0L)   ? N+(-i)   : -i   , (-j LT 0L)  ? N+(-j)  : -j    ] = bicoherence[i,j]
-			bicoherence[ (-j LT 0L)   ? N+(-j)   : -j   , (-i LT 0L)  ? N+(-i)  : -i    ] = bicoherence[i,j]
-			bicoherence[ (-j LT 0L)   ? N+(-j)   : -j   , (i+j LT 0L) ? N+(i+j) : i+j   ] = bicoherence[i,j]
-			bicoherence[ (i+j LT 0L)  ? N+(i+j)  : i+j  , (-j LT 0L)  ? N+(-j)  : -j    ] = bicoherence[i,j]
-			bicoherence[ (i+j LT 0L)  ? N+(i+j)  : i+j  , (-i LT 0L)  ? N+(-i)  : -i    ] = bicoherence[i,j]
-			bicoherence[ (-i LT 0L)   ? N+(-i)   : -i   , (i+j LT 0L) ? N+(i+j) : i+j   ] = bicoherence[i,j]
-		ENDFOR
-	ENDFOR
+            bicoherence[ (-i LT 0L)   ? N+(-i)   : -i   , (-j LT 0L)  ? N+(-j)  : -j    ] = bicoherence[i,j]
+            bicoherence[ (-j LT 0L)   ? N+(-j)   : -j   , (-i LT 0L)  ? N+(-i)  : -i    ] = bicoherence[i,j]
+            bicoherence[ (-j LT 0L)   ? N+(-j)   : -j   , (i+j LT 0L) ? N+(i+j) : i+j   ] = bicoherence[i,j]
+            bicoherence[ (i+j LT 0L)  ? N+(i+j)  : i+j  , (-j LT 0L)  ? N+(-j)  : -j    ] = bicoherence[i,j]
+            bicoherence[ (i+j LT 0L)  ? N+(i+j)  : i+j  , (-i LT 0L)  ? N+(-i)  : -i    ] = bicoherence[i,j]
+            bicoherence[ (-i LT 0L)   ? N+(-i)   : -i   , (i+j LT 0L) ? N+(i+j) : i+j   ] = bicoherence[i,j]
+        ENDFOR
+    ENDFOR
 END
 """
 def bicoherenceSymmetry(bicoherence,N)
-	for j in range(N/4+1):
-		for i in range(N/2-j+1):
-			try :
+    for j in range(N/4+1):
+        for i in range(N/2-j+1):
+            try :
 
                 bicoherence[ N+(j)    if (j < 0L)    else  j    , N+(i)    if  (i < 0L)    else  i    ]  = bicoherence[i,j]
                 bicoherence[ N+(j)    if (j < 0L)    else  j    , N+(-i-j) if  (-i-j < 0L) else  -i-j ]  = bicoherence[i,j]
@@ -129,10 +129,10 @@ def bicoherenceSymmetry(bicoherence,N)
                 bicoherence[ N+(i+j)  if (i+j < 0L)  else  i+j  , N+(-i)   if  (-i < 0L)   else   -i   ] = bicoherence[i,j]
                 bicoherence[ N+(-i)   if (-i < 0L)   else  -i   , N+(i+j)  if  (i+j < 0L)  else   i+j  ] = bicoherence[i,j]
 
-			except IndexError :
-				print "(i,j) = ",i,j
-				#print "Property ",symProp
-				sys.exit(0)
+            except IndexError :
+                print "(i,j) = ",i,j
+                #print "Property ",symProp
+                sys.exit(0)
 
 
 """
@@ -145,33 +145,33 @@ def bicoherenceSymmetry(bicoherence,N)
 
 PRO biCovarianceSymmetry,biCovariance,N
 
-	FOR i=0L,N/2L DO BEGIN
-		FOR j=0L,i DO BEGIN
-			biCovariance[(j LT 0L) ? N+(j) : j , (i LT 0L) ? N+(i) : i] = biCovariance[i,j]
-			biCovariance[(-j LT 0L) ? N+(-j) : -j , (i-j LT 0L) ? N+(i-j) : i-j] = biCovariance[i,j]
-			biCovariance[(i-j LT 0L) ? N+(i-j) : i-j , (-j LT 0L) ? N+(-j) : -j] = biCovariance[i,j]
-			biCovariance[(j-i LT 0L) ? N+(j-i) : j-i , (-i LT 0L) ? N+(-i) : -i] = biCovariance[i,j]
-			biCovariance[(-i LT 0L) ? N+(-i) : -i , (j-i LT 0L) ? N+(j-i) : j-i] = biCovariance[i,j]
-		ENDFOR
-	ENDFOR
+    FOR i=0L,N/2L DO BEGIN
+        FOR j=0L,i DO BEGIN
+            biCovariance[(j LT 0L) ? N+(j) : j , (i LT 0L) ? N+(i) : i] = biCovariance[i,j]
+            biCovariance[(-j LT 0L) ? N+(-j) : -j , (i-j LT 0L) ? N+(i-j) : i-j] = biCovariance[i,j]
+            biCovariance[(i-j LT 0L) ? N+(i-j) : i-j , (-j LT 0L) ? N+(-j) : -j] = biCovariance[i,j]
+            biCovariance[(j-i LT 0L) ? N+(j-i) : j-i , (-i LT 0L) ? N+(-i) : -i] = biCovariance[i,j]
+            biCovariance[(-i LT 0L) ? N+(-i) : -i , (j-i LT 0L) ? N+(j-i) : j-i] = biCovariance[i,j]
+        ENDFOR
+    ENDFOR
 END
 
 """
 def biCovarianceSymmetry(biCovariance,NN)
-	for i in range(NN/2+1):
-		for j in range(i+1):
-			try :
+    for i in range(NN/2+1):
+        for j in range(i+1):
+            try :
 
-				symProp=5 ; biCovariance[ NN+(j)   if (  j < 0L)  else   j , NN+(i)    if (  i < 0L) else   i ] = biCovariance[i,j]
-				symProp=4 ; biCovariance[ NN+(-j)  if ( -j < 0L)  else  -j , NN+(i-j)  if (i-j < 0L) else i-j ] = biCovariance[i,j]
-				symProp=3 ; biCovariance[ NN+(i-j) if (i-j < 0L)  else i-j , NN+(-j)   if ( -j < 0L) else  -j ] = biCovariance[i,j]
-				symProp=2 ; biCovariance[ NN+(j-i) if (j-i < 0L)  else j-i , NN+(-i)   if ( -i < 0L) else  -i ] = biCovariance[i,j]
-				symProp=1 ; biCovariance[ NN+(-i)  if ( -i < 0L)  else  -i , NN+(j-i)  if (j-i < 0L) else j-i ] = biCovariance[i,j]
+                symProp=5 ; biCovariance[ NN+(j)   if (  j < 0L)  else   j , NN+(i)    if (  i < 0L) else   i ] = biCovariance[i,j]
+                symProp=4 ; biCovariance[ NN+(-j)  if ( -j < 0L)  else  -j , NN+(i-j)  if (i-j < 0L) else i-j ] = biCovariance[i,j]
+                symProp=3 ; biCovariance[ NN+(i-j) if (i-j < 0L)  else i-j , NN+(-j)   if ( -j < 0L) else  -j ] = biCovariance[i,j]
+                symProp=2 ; biCovariance[ NN+(j-i) if (j-i < 0L)  else j-i , NN+(-i)   if ( -i < 0L) else  -i ] = biCovariance[i,j]
+                symProp=1 ; biCovariance[ NN+(-i)  if ( -i < 0L)  else  -i , NN+(j-i)  if (j-i < 0L) else j-i ] = biCovariance[i,j]
 
-			except IndexError :
-				print "(i,j) = ",i,j
-				print "Property ",symProp
-				sys.exit(0)
+            except IndexError :
+                print "(i,j) = ",i,j
+                print "Property ",symProp
+                sys.exit(0)
 
 
 def plotInstance() :

@@ -53,13 +53,13 @@ def phillips_elev_spectrum(Scale,Power,NLCoupling,powExponent):
     print 'dk    = %15.6f meters^{-1}' % (dk)
     print 'k_N   = %15.6f meters^{-1}' % (np.double(N/2)*dk)
 
-    B      =  0.005	    # Dimensionless constant
+    B      =  0.005		# Dimensionless constant
     g      =  9.81      # Acceleration due to gravity in m * s^{-2}
     v      =  5.        # Wind velocity in m * s^{-1}
     gammaT =  0.073     # Water surface tension in N * m^{-1}
     rho    =  1000.     # Water density in kg * m^{3}
 
-    kc0 = g/(v*v)	                                    # Lower wavenumber cutoff for wind waves
+    kc0 = g/(v*v)										# Lower wavenumber cutoff for wind waves
     k_gamma = np.minimum(np.sqrt(rho*g/gammaT),k_max)	# Upper wavenumber cutoff for 
                                                         #the capillary wave region
 
@@ -132,14 +132,14 @@ def phillips_elev_spectrum(Scale,Power,NLCoupling,powExponent):
 def phillips_elev_slope_variances_theory(k):
 	print "Calculating the Elevation and Slope variances..."
 
-	B      =  0.005	    # Dimensionless constant
+	B      =  0.005		# Dimensionless constant
 	g      =  9.81      # Acceleration due to gravity in m * s^{-2}
 	v      =  5.        # Wind velocity in m * s^{-1}
 	gammaT =  0.073     # Water surface tension in N * m^{-1}
 	rho    =  1000.     # Water density in kg * m^{3}
 
 	k_max = k[-1]
-	kc0 = g/(v*v)	                                # Lower wavenumber cutoff for wind waves
+	kc0 = g/(v*v)									# Lower wavenumber cutoff for wind waves
 	k_gamma = np.min(np.sqrt(rho*g/gammaT),k_max)	# Upper wavenumber cutoff for the 
                                                     # capillary wave region
 
@@ -229,7 +229,7 @@ PRO gaussian_elev_spectrum,SCALE,POWER,NLCOUPLING
 
 	xwinsize=800
 	ywinsize=450
- 	!P.MULTI=0
+	!P.MULTI=0
 	WINDOW,0,xsize = xwinsize,ysize = ywinsize,title='Elevation Power Spectrum (sub)',RETAIN=2
 	PLOT,k,totalPower,xrange=[0.01D,10.0],xtitle='k',/xstyle,$
 		ytitle='power',linestyle=0,/ystyle,charsize=chsize

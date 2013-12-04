@@ -25,7 +25,7 @@ PRO phillips_elev_spectrum,SCALE,POWER,NLCOUPLING,powExponent
 	gammaT =  0.073D    ;;; Water surface tension in N * m^{-1}
 	rho    =  1000.D    ;;; Water density in kg * m^{3}
 
-	kc0 = g/(v*v)	                        ;;; Lower wavenumber cutoff for wind waves
+	kc0 = g/(v*v)							;;; Lower wavenumber cutoff for wind waves
 	k_gamma = MIN(SQRT(rho*g/gammaT),k_max)	;;; Upper wavenumber cutoff for the capillary wave region
 
 	nlCutoff   = 1.5D	;;; Upper limit of source waves is nlCutoff*kc0
@@ -181,7 +181,7 @@ PRO gaussian_elev_spectrum,SCALE,POWER,NLCOUPLING
 
 	xwinsize=800
 	ywinsize=450
- 	!P.MULTI=0
+	!P.MULTI=0
 	WINDOW,0,xsize = xwinsize,ysize = ywinsize,title='Elevation Power Spectrum (sub)',RETAIN=2
 	PLOT,k,totalPower,xrange=[0.01D,10.0],xtitle='k',/xstyle,$
 		ytitle='power',linestyle=0,/ystyle,charsize=chsize
