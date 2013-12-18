@@ -380,6 +380,25 @@ PRO cumulantFunctionSimulate,N,NN,delta_x,N_r,spectrumType,specExp,powWindType,b
 		nlElevAvgPower += ABS(FFT(nlElevSurface,/DOUBLE))^2.D
 		totalElevAvgPower += ABS(FFT(totalElevSurface,/DOUBLE))^2.D
 
+		;;; Compute the elevation moments
+		elevMean     += MEAN(DOUBLE(totalElevSurface),/DOUBLE)
+		elevVariance += VARIANCE(DOUBLE(totalElevSurface),/DOUBLE)
+		elevSkewness += SKEWNESS(DOUBLE(totalElevSurface),/DOUBLE)
+
+		elevMoments += [	TOTAL(DOUBLE(totalElevSurface))/DOUBLE(N), $
+							TOTAL(DOUBLE(totalElevSurface)^2.D)/DOUBLE(N), $ 
+							TOTAL(DOUBLE(totalElevSurface)^3.D)/DOUBLE(N) ]
+
+		;;; Compute the Fourier spectra of the total surfaces
+		totalElevSpectrum = FFT(totalElevSurface,/DOUBLE)
+
+		;;; Calculate the average bispectra (for the reduced domain)
+		FOR j=0L,NN4 DO BEGIN
+			FOR i=j,NN2-j DO BEGIN
+				elevBispectrum[i,j] += totalElevSpectrum[i]*totalElevSpectrum[j]*CONJ(totalElevSpectrum[i+j])
+			ENDFOR
+		ENDFOR
+
 		;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 		;;;   Compute the slope realisations from the slope spectra ;;;
 		;;;   and the synthesisised phases                          ;;;
@@ -387,7 +406,6 @@ PRO cumulantFunctionSimulate,N,NN,delta_x,N_r,spectrumType,specExp,powWindType,b
 		
 		;;; Calculate the slope spectrum for the free waves
 		primarySlopeSpectrum = primarySlopeAmplitude*DCOMPLEX(-SIN(primaryElevPhase),COS(primaryElevPhase))
-	;	primarySlopeSpectrum += 0.00001*MAX(totalSlopeAmplitude)*RANDOMN(seed,N)
 		primarySlopeSpectrum[N/2L+1L:N-1L] = CONJ(REVERSE(primarySlopeSpectrum[1L:N/2L-1L]))
 
 		;;; Calculate the slope spectrum for the bound waves
@@ -405,34 +423,21 @@ PRO cumulantFunctionSimulate,N,NN,delta_x,N_r,spectrumType,specExp,powWindType,b
 		nlSlopeAvgPower += ABS(FFT(nlSlopeSurface,/DOUBLE))^2.D
 		totalSlopeAvgPower += ABS(FFT(totalSlopeSurface,/DOUBLE))^2.D
 
-		;;; Compute the elevation moments
-
-		elevMoments += [	TOTAL(DOUBLE(totalElevSurface))/DOUBLE(N), $
-							TOTAL(DOUBLE(totalElevSurface)^2.D)/DOUBLE(N), $ 
-							TOTAL(DOUBLE(totalElevSurface)^3.D)/DOUBLE(N) ]
-
-		elevMean += MEAN(DOUBLE(totalElevSurface),/DOUBLE)
-		elevVariance += VARIANCE(DOUBLE(totalElevSurface),/DOUBLE)
-		elevSkewness += SKEWNESS(DOUBLE(totalElevSurface),/DOUBLE)
-
 		;;; Compute the slope moments
+		slopeMean += MEAN(DOUBLE(totalSlopeSurface),/DOUBLE)
+		slopeVariance += VARIANCE(DOUBLE(totalSlopeSurface),/DOUBLE)
+		slopeSkewness += SKEWNESS(DOUBLE(totalSlopeSurface),/DOUBLE)
 
 		slopeMoments += [	TOTAL(DOUBLE(totalSlopeSurface))/DOUBLE(N), $
 							TOTAL(DOUBLE(totalSlopeSurface)^2.D)/DOUBLE(N), $ 
 							TOTAL(DOUBLE(totalSlopeSurface)^3.D)/DOUBLE(N) ]
 
-		slopeMean += MEAN(DOUBLE(totalSlopeSurface),/DOUBLE)
-		slopeVariance += VARIANCE(DOUBLE(totalSlopeSurface),/DOUBLE)
-		slopeSkewness += SKEWNESS(DOUBLE(totalSlopeSurface),/DOUBLE)
-
-		;;; Compute the Fourier spectra of the total surfaces
-		totalElevSpectrum = FFT(totalElevSurface,/DOUBLE)
+		;;; Compute the Fourier spectrum of the total surface
 		totalSlopeSpectrum = FFT(totalSlopeSurface,/DOUBLE)
 
 		;;; Calculate the average bispectra (for the reduced domain)
 		FOR j=0L,NN4 DO BEGIN
 			FOR i=j,NN2-j DO BEGIN
-				elevBispectrum[i,j] += totalElevSpectrum[i]*totalElevSpectrum[j]*CONJ(totalElevSpectrum[i+j])
 				slopeBispectrum[i,j] += totalSlopeSpectrum[i]*totalSlopeSpectrum[j]*CONJ(totalSlopeSpectrum[i+j])
 			ENDFOR
 		ENDFOR

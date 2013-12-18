@@ -31,6 +31,7 @@ __version__ = '$Id$'
 __docformat__ = 'Epytext'
 
 
+import numpy as np
 
 """
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -60,7 +61,7 @@ PRO bispectrumSymmetry,bispectrum,N
     ENDFOR
 END
 """
-def bispectrumSymmetry(bispectrum,N)
+def bispectrumSymmetry(bispectrum,N):
     for j in range(N/4+1):
         for i in range(N/2-j+1):
             try :
@@ -111,7 +112,7 @@ PRO bicoherenceSymmetry,bicoherence,N
     ENDFOR
 END
 """
-def bicoherenceSymmetry(bicoherence,N)
+def bicoherenceSymmetry(bicoherence,N):
     for j in range(N/4+1):
         for i in range(N/2-j+1):
             try :
@@ -157,7 +158,7 @@ PRO biCovarianceSymmetry,biCovariance,N
 END
 
 """
-def biCovarianceSymmetry(biCovariance,NN)
+def biCovarianceSymmetry(biCovariance,NN):
     for i in range(NN/2+1):
         for j in range(i+1):
             try :

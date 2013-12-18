@@ -101,11 +101,12 @@ sourcename= file_Id.split(" ")
 LOG = logging.getLogger(__file__)
 
 from elevPowerSpectrum import phillips_elev_spectrum
+from utility import bispectrumSymmetry, bicoherenceSymmetry, biCovarianceSymmetry
 
 
 # Initialise the scale structure
 class ScaleStruct :
-    def __init__(self, N, delta_x) :
+    def __init__(self, N, NN, delta_x) :
         self.N = N
         self.delta_x = delta_x
         self.x_max = double(N-1)*delta_x
@@ -116,28 +117,34 @@ class ScaleStruct :
         self.k_N = double(N/2)*self.delta_k # Nyquist "wavenumber"
         self.k = np.arange(N)*self.delta_k
 
+        self.N2 = N/2
+
+        self.NN = NN
+        self.NN2 = NN/2
+        self.NN4 = NN/4
+
 class GeomStruct :
-    def __init__(self, N_angles, angleLo, angleHi) :
-        self.N_angles = N_angles
-        self.source_angle = np.arange(N_angles)
-        self.detector_angle = np.arange(N_angles)
-        self.xi_min = np.arange(N_angles)
-        self.xi_0 = np.arange(N_angles)
-        self.xi_max = np.arange(N_angles)
+    def __init__(self, N_geoms, angleLo, angleHi) :
+        self.N_geoms = N_geoms
+        self.source_angle = np.arange(N_geoms)
+        self.detector_angle = np.arange(N_geoms)
+        self.xi_min = np.arange(N_geoms)
+        self.xi_0 = np.arange(N_geoms)
+        self.xi_max = np.arange(N_geoms)
 
         self.angleRange=(angleHi-angleLo)
 
-        if ((N_angles-1) == 0) :
+        if ((N_geoms-1) == 0) :
             self.d_angle = 0
         else :
-            self.d_angle = self.angleRange/(N_angles-1)
+            self.d_angle = self.angleRange/(N_geoms-1)
 
         self.start_angle = angleLo
         d2r = pi/180.
         r2d = 180./pi
         beta = 0.68*d2r
 
-        self.source_angle = ((self.start_angle + np.arange(N_angles,dtype=double)*self.d_angle))*d2r
+        self.source_angle = ((self.start_angle + np.arange(N_geoms,dtype=double)*self.d_angle))*d2r
         self.detector_angle = 0.0*d2r
         gamma = (self.source_angle - self.detector_angle)/2.
         self.xi_0 = tan(gamma)
@@ -181,7 +188,7 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
     # Determine the various scale parameters and populate the 
     # Scale class 
 
-    Scale = ScaleStruct(N, delta_x)
+    Scale = ScaleStruct(N, NN, delta_x)
 
     print 'Scale.N       = %15d' % (Scale.N)
     print 'Scale.delta_x = %15.6f meters' % (Scale.delta_x)
@@ -198,12 +205,17 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
     k_N     = Scale.k_N
     k       = Scale.k
 
+    N2 = Scale.N2
+
+    NN2 = Scale.NN2
+    NN4 = Scale.NN4
+
     #   Populate the GEOM structure with angular quantities
 
-    N_angles = 5L
+    N_geoms = 5L
     angleLo=10.
     angleHi=30.
-    Geom = GeomStruct(N_angles,angleLo,angleHi)
+    Geom = GeomStruct(N_geoms,angleLo,angleHi)
 
     #   Populate the elevation power spectrum structures ElevPower, 
     #   and NLCoupling                                          
@@ -313,6 +325,9 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
     totalElevAvgPower = np.zeros(N,dtype=double)
     primaryElevAvgPower = np.zeros(N,dtype=double)
     nlElevAvgPower = np.zeros(N,dtype=double)
+    elevBispectrum = np.zeros((NN,NN),dtype=np.complex)
+    elevComponentPower = np.zeros((NN,NN),dtype=np.float)
+    elevSumPower = np.zeros((NN,NN),dtype=np.float)
 
     #    Compute the total slope amplitude, phase and spectrum
 
@@ -354,6 +369,10 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
     primarySlopeAvgPower = np.zeros(N,dtype=double)
     nlSlopeAvgPower = np.zeros(N,dtype=double)
 
+    slopeBispectrum = np.zeros((NN,NN),dtype=np.complex)
+    slopeComponentPower = np.zeros((NN,NN),dtype=np.float)
+    slopeSumPower = np.zeros((NN,NN),dtype=np.float)
+
     #    Compute the total curvature amplitude, phase and spectrum
 
     totalCurvatureAmplitude = np.zeros(N,dtype=double)
@@ -394,11 +413,18 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
     primaryCurvatureAvgPower = np.zeros(N,dtype=double)
     nlCurvatureAvgPower = np.zeros(N,dtype=double)
 
-    #   Define the glint, glint spectrum and glint power
+    curvatureBispectrum = np.zeros((NN,NN),dtype=np.complex)
+    curvatureComponentPower = np.zeros((NN,NN),dtype=np.float)
+    curvatureSumPower = np.zeros((NN,NN),dtype=np.float)
 
-    glint = np.zeros(N,dtype=double)
-    glintSpectrum = np.zeros(N,dtype=np.complex64)
-    totalGlintAvgPower = np.zeros((Geom.N_angles,N),dtype=double) # DBLARR(N,GEOM.N_angles)
+
+    #   Define the glint, glint spectrum and glint power
+    glint               = np.zeros(N,dtype=double)
+    glintSpectrum       = np.zeros(N,dtype=np.complex)
+    totalGlintAvgPower  = np.zeros((N_geoms,N),dtype=double)
+    glintBispectrum     = np.zeros((N_geoms,NN,NN),dtype=np.complex)
+    glintComponentPower = np.zeros((N_geoms,NN,NN),dtype=np.float)
+    glintSumPower       = np.zeros((N_geoms,NN,NN),dtype=np.float)
 
     #   Define the various point estimators for the elevation,
     #   slope and glint
@@ -408,20 +434,20 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
     elevStats = DataStatsStruct(numMoments)
     slopeStats = DataStatsStruct(numMoments)
     curvatureStats = DataStatsStruct(numMoments)
-    glintStats = [DataStatsStruct(numMoments) for geoms in np.arange(Geom.N_angles) ]
+    glintStats = [DataStatsStruct(numMoments) for geoms in np.arange(N_geoms) ]
 
     #   Loop through the surface realisations for the quadratically
     #   coupled oscillations
 
     seed = 30
     N_r_cum = 0
-    angleRuns = np.zeros(Geom.N_angles,np.long)
-    angleRunsCum = np.zeros(Geom.N_angles,np.long)
+    geom_runs = np.zeros(N_geoms,np.long)
+    geom_runsCum = np.zeros(N_geoms,np.long)
 
     #time.sleep(3.)
     t1 = time.time()
 
-    while (angleRuns.sum() < N_r*Geom.N_angles) :
+    while (geom_runs.sum() < N_r * N_geoms) :
 
         N_r_cum += 1
 
@@ -434,8 +460,8 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 
 
         ### Compute the independent phases for this realisation
-        primaryElevPhase = np.random.rand(N)*2.*pi - pi # RANDOMU(seed,N)*2.D*!DPI - !DPI
-        nlElevPhase      = np.random.rand(N)*2.*pi - pi # RANDOMU(seed,N)*2.D*!DPI - !DPI
+        primaryElevPhase = np.random.rand(N)*2.*pi - pi
+        nlElevPhase      = np.random.rand(N)*2.*pi - pi
 
         ### Apply the phase correlations between the free and bound wavenumbers for the nonlinear
         ### component, if (nlSwitch==1)
@@ -443,8 +469,10 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
             nlElevPhase[NLCoupling.bound] = primaryElevPhase[NLCoupling.free1] + \
                     primaryElevPhase[NLCoupling.free2]
 
-        #   Compute the elevation realisations from the elevation spectra
-        #   and the synthesised phases
+        ##################################################################
+        # Compute the elevation realisations from the elevation spectra  #
+        # and the synthesised phases                                     #
+        ##################################################################
         
         ### Calculate the elevation spectrum for the free waves
         primaryElevSpectrum = primaryElevAmplitude*(cos(primaryElevPhase) + 1j*sin(primaryElevPhase))
@@ -456,22 +484,16 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 
         ### Compute specific realisation of the free and bound waves. Nonlinear elevation
         ### (totalElevSurface) is sum of free and bound waves.
-        primaryElevSurface = fft(primaryElevSpectrum)                      ### Free waves
-        nlElevSurface = fft(nlElevSpectrum)                                ### Bound waves
-        totalElevSurface = primaryElevSurface + nlElevSurface              ### Total surface
+        primaryElevSurface = fft(primaryElevSpectrum)                ### Free waves
+        nlElevSurface      = fft(nlElevSpectrum)                     ### Bound waves
+        totalElevSurface   = primaryElevSurface + nlElevSurface      ### Total surface
  
         ### Compute the average power spectrum for free, bound and total elevation waves
         primaryElevAvgPower += abs(ifft(primaryElevSurface))**2.
         nlElevAvgPower      += abs(ifft(nlElevSurface))**2.
         totalElevAvgPower   += abs(ifft(totalElevSurface))**2.
 
-        #print "\tElevation stdev from power vector:    %10.6e meters" % \
-            #(sqrt(np.sum(abs(ifft(totalElevSurface.real))**2.)))
-        #print "\tElevation variance from power vector: %10.6e meters^{2}\n" % \
-            #(np.sum(abs(ifft(totalElevSurface.real))**2.))
-
-        ### Compute the elevation moments
-
+        ### Compute the elevation estimators for this realisation
         elevStats.mean     += np.mean(totalElevSurface.real)
         elevStats.variance += np.var(totalElevSurface.real)
         elevStats.skewness += stats.skew(totalElevSurface.real)
@@ -480,15 +502,32 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
                                np.sum(totalElevSurface.real**2.)/double(N), \
                                np.sum(totalElevSurface.real**3.)/double(N)]
 
-        ### Compute the Fourier spectrum of the total surface
+        # Compute the Fourier spectrum of the total surface
         totalElevSpectrum = ifft(totalElevSurface)
 
-        #   Compute the slope realisations from the slope spectra
-        #   and the synthesised phases
+        # Calculate the elevation bispectrum (reduced domain) for this realisation
+        for j in np.arange(NN4+1):
+            for i in np.arange(j,NN2-j+1):
+                elevBispectrum[i,j] += totalElevSpectrum[i]*totalElevSpectrum[j] \
+                        * np.conjugate(totalElevSpectrum[i+j])
+
+        # Calculate the elevation component power spectrum (reduced domain) for this realisation
+        for j in np.arange(NN4+1):
+            for i in np.arange(j,NN2-j+1):
+                elevComponentPower[i,j] += (abs(totalElevSpectrum[i]*totalElevSpectrum[j]))**2.
+
+        # Calculate the elevation sum power spectrum (reduced domain) for this realisation
+        for j in np.arange(NN4+1):
+            for i in np.arange(j,NN2-j+1):
+                elevSumPower[i,j] += (abs(totalElevSpectrum[i+j]))**2.
+
+        #########################################################
+        # Compute the slope realisations from the slope spectra #
+        # and the synthesised phases                            #
+        #########################################################
         
         ### Calculate the slope spectrum for the free waves
         primarySlopeSpectrum = primarySlopeAmplitude*(sin(primaryElevPhase) - 1j*cos(primaryElevPhase))
-        #primarySlopeSpectrum += 0.00001*MAX(totalSlopeAmplitude)*RANDOMN(seed,N)
         primarySlopeSpectrum[N/2+1 :] = np.conjugate(primarySlopeSpectrum[1 : N/2][::-1])
 
         ### Calculate the slope spectrum for the bound waves
@@ -497,22 +536,16 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 
         ### Compute specific realisation of the free and bound waves. Nonlinear slope
         ### (totalSlopeSurface) is sum of free and bound waves.
-        primarySlopeSurface = fft(primarySlopeSpectrum)                    ### Free waves
-        nlSlopeSurface = fft(nlSlopeSpectrum)                              ### Bound waves
-        totalSlopeSurface = primarySlopeSurface + nlSlopeSurface           ### Total surface
+        primarySlopeSurface = fft(primarySlopeSpectrum)             ### Free waves
+        nlSlopeSurface = fft(nlSlopeSpectrum)                       ### Bound waves
+        totalSlopeSurface = primarySlopeSurface + nlSlopeSurface    ### Total surface
 
         ### Compute the average power spectrum for free, bound and total elevation waves
         primarySlopeAvgPower += abs(ifft(primarySlopeSurface))**2.
         nlSlopeAvgPower += abs(ifft(nlSlopeSurface))**2.
         totalSlopeAvgPower += abs(ifft(totalSlopeSurface))**2.
 
-        #print "\n\tSlope stdev from power vector:    %10.6e meters" % \
-            #(sqrt(np.sum(abs(ifft(totalSlopeSurface.real))**2.)))
-        #print "\tSlope variance from power vector: %10.6e meters^{2}\n" % \
-            #(np.sum(abs(ifft(totalSlopeSurface.real))**2.))
-
-        ### Compute the slope moments
-
+        ### Compute the slope estimators
         slopeStats.mean     += np.mean(totalSlopeSurface.real)
         slopeStats.variance += np.var(totalSlopeSurface.real)
         slopeStats.skewness += stats.skew(totalSlopeSurface.real)
@@ -521,15 +554,32 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
                                 np.sum(totalSlopeSurface**2.)/double(N), \
                                 np.sum(totalSlopeSurface**3.)/double(N) ]
 
-        ### Compute the Fourier spectrum of the total surface
+        # Compute the Fourier spectrum of the total surface
         totalSlopeSpectrum = ifft(totalSlopeSurface)
 
-        #   Compute the curvature realisations from the curvature spectra
-        #   and the synthesised phases
+        # Calculate the slope bispectrum (reduced domain) for this realisation
+        for j in np.arange(NN4+1):
+            for i in np.arange(j,NN2-j+1):
+                slopeBispectrum[i,j] += totalSlopeSpectrum[i]*totalSlopeSpectrum[j] \
+                        * np.conjugate(totalSlopeSpectrum[i+j])
+
+        # Calculate the slope component power spectrum (reduced domain) for this realisation
+        for j in np.arange(NN4+1):
+            for i in np.arange(j,NN2-j+1):
+                slopeComponentPower[i,j] += (abs(totalSlopeSpectrum[i]*totalSlopeSpectrum[j]))**2.
+
+        # Calculate the slope sum power spectrum (reduced domain) for this realisation
+        for j in np.arange(NN4+1):
+            for i in np.arange(j,NN2-j+1):
+                slopeSumPower[i,j] += (abs(totalSlopeSpectrum[i+j]))**2.
+
+        #################################################################
+        # Compute the curvature realisations from the curvature spectra #
+        # and the synthesised phases                                    #
+        #################################################################
         
         ### Calculate the curvature spectrum for the free waves
         primaryCurvatureSpectrum = primaryCurvatureAmplitude*(-cos(primaryElevPhase) - 1j*sin(primaryElevPhase))
-        #primaryCurvatureSpectrum += 0.00001*MAX(totalCurvatureAmplitude)*RANDOMN(seed,N)
         primaryCurvatureSpectrum[N/2+1 :] = np.conjugate(primaryCurvatureSpectrum[1 : N/2][::-1])
 
         ### Calculate the curvature spectrum for the bound waves
@@ -559,8 +609,7 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
         #print "\tCurvature variance from power vector: %10.6e meters^{2}\n" % \
             #(np.sum(abs(ifft(totalCurvatureSurface.real))**2.))
 
-        # Compute the curvature moments
-
+        # Compute the curvature estimators
         curvatureStats.mean     += np.mean(totalCurvatureSurface.real)
         curvatureStats.variance += np.var(totalCurvatureSurface.real)
         curvatureStats.skewness += stats.skew(totalCurvatureSurface.real)
@@ -572,60 +621,79 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
         # Compute the Fourier spectrum of the total surface
         totalCurvatureSpectrum = ifft(totalCurvatureSurface)
 
-        # Loop through the geometries in the GEOM structure
+        # Calculate the curvature bispectrum (reduced domain) for this realisation
+        for j in np.arange(NN4+1):
+            for i in np.arange(j,NN2-j+1):
+                curvatureBispectrum[i,j] += totalCurvatureSpectrum[i]*totalCurvatureSpectrum[j] \
+                        * np.conjugate(totalCurvatureSpectrum[i+j])
 
-        for angle in np.arange(Geom.N_angles) :
+        # Calculate the curvature component power spectrum (reduced domain) for this realisation
+        for j in np.arange(NN4+1):
+            for i in np.arange(j,NN2-j+1):
+                curvatureComponentPower[i,j] += (abs(totalCurvatureSpectrum[i]*totalCurvatureSpectrum[j]))**2.
+
+        # Calculate the curvature sum power spectrum (reduced domain) for this realisation
+        for j in np.arange(NN4+1):
+            for i in np.arange(j,NN2-j+1):
+                curvatureSumPower[i,j] += (abs(totalCurvatureSpectrum[i+j]))**2.
+
+
+
+        #####################################################
+        # Loop through the geometries in the GEOM structure #
+        #####################################################
+
+        for geom in np.arange(N_geoms) :
 
             # Check if we have finished processing for this
-            # angle.
+            # geom.
 
-            if (angleRuns[angle] < N_r) :
+            if (geom_runs[geom] < N_r) :
 
-                #print "\n\tProcessing angle ",angle," for run ",angleRuns[angle]+1, \
-                #" --> attempt ",angleRunsCum[angle]+1
+                #print "\n\tProcessing geom ",geom," for run ",geom_runs[geom]+1, \
+                #" --> attempt ",geom_runsCum[geom]+1
 
                 #   Compute the glint realisation from the slope
                 #   realisations
 
-                slopeMin = Geom.xi_min[angle]
-                slopeMax = Geom.xi_max[angle]
+                slopeMin = Geom.xi_min[geom]
+                slopeMax = Geom.xi_max[geom]
 
                 glint = np.double(totalSlopeSurface.real > slopeMin) * np.double(totalSlopeSurface.real < slopeMax)
 
                 ### Check if all glint elements vanish
                 result = np.where(glint)
 
-                #if (glint.sum() == 0.) :
                 if (np.shape(np.squeeze(np.where(glint))) == (0,)) :
 
-                    #print "\tZero-glint realisation angle ",angle, \
-                    #" for run ",angleRuns[angle]+1, \
-                    #" --> attempt ",angleRunsCum[angle]+1
+                    #print "\tZero-glint realisation geom ",geom, \
+                    #" for run ",geom_runs[geom]+1, \
+                    #" --> attempt ",geom_runsCum[geom]+1
 
                     ### There are no glints, add to attempts count
-                    ### If this angle fails and there are no glints, then steeper 
-                    ### angles will fail also, so break out of the angle loop and 
+                    ### If this geom fails and there are no glints, then steeper 
+                    ### geoms will fail also, so break out of the geom loop and 
                     ### proceed to the next realisation...
 
-                    angleRunsCum[angle:Geom.N_angles] += 1
+                    geom_runsCum[geom:N_geoms] += 1
                     break
 
                 else :
 
-                    #print "\tSuccessful realisation angle ",angle, \
-                    #" for run ",angleRuns[angle] + 1, \
-                    #" --> attempt ",angleRunsCum[angle]+1
+                    #print "\tSuccessful realisation geom ",geom, \
+                    #" for run ",geom_runs[geom] + 1, \
+                    #" --> attempt ",geom_runsCum[geom]+1
 
-                    angleRuns[angle] += 1
-                    angleRunsCum[angle] += 1
+                    geom_runs[geom] += 1
+                    geom_runsCum[geom] += 1
 
                     ### Compute the glint moments
 
-                    glintStats[angle].mean     += np.mean(glint.real)
-                    glintStats[angle].variance += np.var( glint.real)
-                    glintStats[angle].skewness += stats.skew(glint.real)
+                    glintStats[geom].mean     += np.mean(glint.real)
+                    glintStats[geom].variance += np.var( glint.real)
+                    glintStats[geom].skewness += stats.skew(glint.real)
 
-                    glintStats[angle].moments += [ np.sum(glint.real    )/double(N), \
+                    glintStats[geom].moments += [ np.sum(glint.real    )/double(N), \
                                                    np.sum(glint.real**2.)/double(N), \
                                                    np.sum(glint.real**3.)/double(N) ]
 
@@ -634,21 +702,38 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
                     glintSpectrum = ifft(glint)
 
                     # Compute the average glint power spectrum
+                    # TODO: incorporate windowing to minimise aliasing
+                    totalGlintAvgPower[geom] += abs(glintSpectrum)**2.
 
-                    totalGlintAvgPower[angle] += abs(glintSpectrum)**2.
+                    # Calculate the glint bispectrum (reduced domain) for this realisation
+                    for j in np.arange(NN4+1):
+                        for i in np.arange(j,NN2-j+1):
+                            glintBispectrum[geom,i,j] += glintSpectrum[i]*glintSpectrum[j] \
+                                    * np.conjugate(glintSpectrum[i+j])
 
-                ### End checking for zero-glint of this angle
+                    # Calculate the glint component power spectrum (reduced domain) for this realisation
+                    for j in np.arange(NN4+1):
+                        for i in np.arange(j,NN2-j+1):
+                            glintComponentPower[geom,i,j] += (abs(glintSpectrum[i]*glintSpectrum[j]))**2.
 
-            ### End checking for completion of this angle
+                    # Calculate the glint sum power spectrum (reduced domain) for this realisation
+                    for j in np.arange(NN4+1):
+                        for i in np.arange(j,NN2-j+1):
+                            glintSumPower[geom,i,j] += (abs(glintSpectrum[i+j]))**2.
 
-        ### End angle loop
+
+                ### End checking for zero-glint of this geom
+
+            ### End checking for completion of this geom
+
+        ### End geom loop
 
     ### End realisation loop
     
     print ""
-    print "AngleRuns:    ",angleRuns," ... for total of ", \
-        int(np.sum(angleRuns))," / ",N_r*Geom.N_angles
-    print "AngleRunsCum: ",angleRunsCum
+    print "geom_runs:    ",geom_runs," ... for total of ", \
+        int(np.sum(geom_runs))," / ",N_r * N_geoms
+    print "geom_runsCum: ",geom_runsCum
     
     N_runs = N_r
     N_r = N_r_cum
@@ -660,124 +745,343 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
     #   Compute the elevation estimators   #
     ########################################
 
+    # Normalise the estimators
     elevStats.mean     /= double(N_runs)
     elevStats.variance /= double(N_runs)
     elevStats.skewness /= double(N_runs)
+    elevStats.moments /= double(N_runs)
 
+    # Compute the cumulants
+    elevStats.cumulantsFromMoments()
+
+    # Compute the average elevation moment and cumulant functions.
+    elevSecondMomentFunction =  fft(totalElevAvgPower)
+    elevSecondMomentFunction /= elevSecondMomentFunction.real[0]
+
+    # Compute the second order elev cumulant function
+    elevSecondCumulantFunction = (elevStats.moments[1]*elevSecondMomentFunction - 
+            elevStats.moments[0]**2.)/elevStats.cumulants[1]
+
+	# Compute the bispectrum estimators
+    elevBispectrum /= float(N_r)
+    elevComponentPower /= float(N_r)
+    elevSumPower /= float(N_r)
+
+	# Compute the bicoherence
+    elevBicoherence = np.zeros((NN,NN),dtype=np.float)
+    for j in np.arange(NN4+1):
+        for i in np.arange(j,NN2-j+1):
+            if (sqrt(elevComponentPower[i,j])*sqrt(elevSumPower[i,j]) > 10.**(-12.)):
+				elevBicoherence[i,j] = abs(elevBispectrum[i,j])/ \
+                        (sqrt(elevComponentPower[i,j])*sqrt(elevSumPower[i,j]))
+            else:
+				elevBicoherence[i,j] = 0.
+
+	# Fill the rest of the bispectrum and bicoherence array
+	bispectrumSymmetry(elevBispectrum,NN)
+	bicoherenceSymmetry(elevBicoherence,NN)
+
+	# Compute the elevation third moment function
+    elevThirdMomentFunction = np.zeros((NN,NN),dtype=np.float)
+    elevThirdMomentFunction =  fft(elevBispectrum).real
+    elevThirdMomentFunction /= elevThirdMomentFunction[0,0]
+
+	# Compute the elevation third cumulant function
+    elevThirdCumulantFunction = np.zeros((NN,NN),dtype=np.float)
+    for i in np.arange(0,NN/2+1):
+        for j in np.arange(0,i+1):
+			elevThirdCumulantFunction[i,j] = (elevStats.moments[2]*elevThirdMomentFunction[i,j] \
+				- elevStats.moments[0]*elevStats.moments[1] * \
+				(elevSecondMomentFunction[i] + \
+				 elevSecondMomentFunction[j] + \
+				 elevSecondMomentFunction[abs(j-i)]) \
+				+ 2.*elevStats.moments[0]**3.)/elevStats.cumulants[2]
+
+			elevThirdCumulantFunction[j,i] = elevThirdCumulantFunction[i,j]
+
+
+    ########################################
+    #     Compute the slope estimators     #
+    ########################################
+
+    # Normalise the estimators
     slopeStats.mean     /= double(N_runs)
     slopeStats.variance /= double(N_runs)
     slopeStats.skewness /= double(N_runs)
-
-    curvatureStats.mean     /= double(N_runs)
-    curvatureStats.variance /= double(N_runs)
-    curvatureStats.skewness /= double(N_runs)
-
-    for geoms in np.arange(Geom.N_angles) :
-        glintStats[geoms].mean     /= double(angleRunsCum[geoms])
-        glintStats[geoms].variance /= double(angleRunsCum[geoms])
-        glintStats[geoms].skewness /= double(angleRunsCum[geoms])
-
-    print "\nPython Elevation mean %10.6e" % elevStats.mean
-    print "Python Elevation stdev %10.6e" % sqrt(elevStats.variance)
-    print "Python Elevation variance %10.6e" % elevStats.variance
-    print "Python Elevation skewness %10.6e" % elevStats.skewness
-
-    print "\nPython Slope mean %10.6e" % slopeStats.mean
-    print "Python Slope stdev %10.6e" % sqrt(slopeStats.variance)
-    print "Python Slope variance %10.6e" % slopeStats.variance
-    print "Python Slope skewness %10.6e" % slopeStats.skewness
-
-    print "\nPython Curvature mean %10.6e" % curvatureStats.mean
-    print "Python Curvature stdev %10.6e" % sqrt(curvatureStats.variance)
-    print "Python Curvature variance %10.6e" % curvatureStats.variance
-    print "Python Curvature skewness %10.6e" % curvatureStats.skewness
-
-    print "\nPython Glint mean, variance and skewness ...\n"
-    for geoms in np.arange(Geom.N_angles) :
-        print "\tAngle %1d:\t\t%10.6e\t%10.6e\t%10.6e" % (geoms,\
-            glintStats[geoms].mean,\
-            glintStats[geoms].variance,\
-            glintStats[geoms].skewness)
-
-    #   Compute the moments and cumulants our way
-    elevStats.moments /= double(N_runs)
-    elevStats.cumulantsFromMoments()
     slopeStats.moments /= double(N_runs)
+
+    # Compute the cumulants
     slopeStats.cumulantsFromMoments()
-    curvatureStats.moments /= double(N_runs)
-    curvatureStats.cumulantsFromMoments()
-    for geoms in np.arange(Geom.N_angles) :
-        glintStats[geoms].moments /= double(angleRunsCum[geoms])
-        glintStats[geoms].cumulantsFromMoments()
-
-    print "\nElevation first moment %10.6e" % elevStats.moments[0]
-    print "Elevation second moment %10.6e" % elevStats.moments[1]
-    print "Elevation third moment %10.6e" % elevStats.moments[2]
-
-    print "\nElevation first cumulant %10.6e" % elevStats.cumulants[0]
-    print "Elevation second cumulant %10.6e" % elevStats.cumulants[1]
-    print "Elevation third cumulant %10.6e" % elevStats.cumulants[2]
-
-    print "\nElevation mean %10.6e" % elevStats.mean
-    print "Elevation stdev %10.6e" % sqrt(elevStats.variance)
-    print "Elevation variance %10.6e" % elevStats.variance
-    print "Elevation skewness %10.6e" % elevStats.skewness
-
-    print "\nSlope first moment %10.6e" % slopeStats.moments[0]
-    print "Slope second moment %10.6e" % slopeStats.moments[1]
-    print "Slope third moment %10.6e" % slopeStats.moments[2]
-
-    print "\nSlope first cumulant %10.6e" % slopeStats.cumulants[0]
-    print "Slope second cumulant %10.6e" % slopeStats.cumulants[1]
-    print "Slope third cumulant %10.6e" % slopeStats.cumulants[2]
-
-    print "\nSlope mean %10.6e" % slopeStats.mean
-    print "Slope stdev %10.6e" % sqrt(slopeStats.variance)
-    print "Slope variance %10.6e" % slopeStats.variance
-    print "Slope skewness %10.6e\n" % slopeStats.skewness
-
-    print "\nCurvature first moment %10.6e" % curvatureStats.moments[0]
-    print "Curvature second moment %10.6e" % curvatureStats.moments[1]
-    print "Curvature third moment %10.6e" % curvatureStats.moments[2]
-
-    print "\nCurvature first cumulant %10.6e" % curvatureStats.cumulants[0]
-    print "Curvature second cumulant %10.6e" % curvatureStats.cumulants[1]
-    print "Curvature third cumulant %10.6e" % curvatureStats.cumulants[2]
-
-    print "\nCurvature mean %10.6e" % curvatureStats.mean
-    print "Curvature stdev %10.6e" % sqrt(curvatureStats.variance)
-    print "Curvature variance %10.6e" % curvatureStats.variance
-    print "Curvature skewness %10.6e\n" % curvatureStats.skewness
-
-    print "Glint moments ...\n"
-    for geoms in np.arange(Geom.N_angles) :
-        print "\tAngle %1d:\t\t%10.6e\t%10.6e\t%10.6e" % (geoms,\
-            glintStats[geoms].moments[0],\
-            glintStats[geoms].moments[1],\
-            glintStats[geoms].moments[2])
-
-    print "\nGlint cumulants ...\n"
-    for geoms in np.arange(Geom.N_angles) :
-        print "\tAngle %1d:\t\t%10.6e\t%10.6e\t%10.6e" % (geoms,\
-            glintStats[geoms].cumulants[0],\
-            glintStats[geoms].cumulants[1],\
-            glintStats[geoms].cumulants[2])
-
-    # compute the average elevation moment and cumulant functions.
-    elevSecondMomentFunction =  fft(totalElevAvgPower)
-    elevSecondMomentFunction /= elevSecondMomentFunction.real[0]
-    #elevSecondCumulantFunction = (elevMoments[1]*elevSecondMomentFunction - elevMoments[0]^2.D)/elevCumulants[1]
 
     # compute the average slope moment and cumulant functions.
     slopeSecondMomentFunction =  fft(totalSlopeAvgPower)
     slopeSecondMomentFunction /= slopeSecondMomentFunction.real[0]
 
-    # compute the average glint moment and cumulant functions.
-    glintSecondMomentFunction = np.zeros((Geom.N_angles,N),dtype=double)
-    for geoms in np.arange(Geom.N_angles) :
-        glintSecondMomentFunction[geoms] = fft(totalGlintAvgPower[geoms]).real
-        glintSecondMomentFunction[geoms] /= glintSecondMomentFunction[geoms][0]
+	# Compute the bispectrum estimators
+    slopeBispectrum /= float(N_r)
+    slopeComponentPower /= float(N_r)
+    slopeSumPower /= float(N_r)
 
+	# Compute the bicoherence
+    slopeBicoherence = np.zeros((NN,NN),dtype=np.float)
+    for j in np.arange(NN4+1):
+        for i in np.arange(j,NN2-j+1):
+            if (sqrt(slopeComponentPower[i,j])*sqrt(slopeSumPower[i,j]) > 10.**(-12.)):
+				slopeBicoherence[i,j] = abs(slopeBispectrum[i,j])/ \
+                        (sqrt(slopeComponentPower[i,j])*sqrt(slopeSumPower[i,j]))
+            else:
+				slopeBicoherence[i,j] = 0.
+
+	# Fill the rest of the bispectrum and bicoherence array
+	bispectrumSymmetry(slopeBispectrum,NN)
+	bicoherenceSymmetry(slopeBicoherence,NN)
+
+	# Compute the slope third moment function
+    slopeThirdMomentFunction = np.zeros((NN,NN),dtype=np.float)
+    slopeThirdMomentFunction =  fft(slopeBispectrum).real
+    slopeThirdMomentFunction /= slopeThirdMomentFunction[0,0]
+
+	# Compute the slope third cumulant function
+    slopeThirdCumulantFunction = np.zeros((NN,NN),dtype=np.float)
+    for i in np.arange(0,NN/2+1):
+        for j in np.arange(0,i+1):
+			slopeThirdCumulantFunction[i,j] = (slopeStats.moments[2]*slopeThirdMomentFunction[i,j] \
+				- slopeStats.moments[0]*slopeStats.moments[1] * \
+				(slopeSecondMomentFunction[i] + \
+				 slopeSecondMomentFunction[j] + \
+				 slopeSecondMomentFunction[abs(j-i)]) \
+				+ 2.*slopeStats.moments[0]**3.)/slopeStats.cumulants[2]
+
+			slopeThirdCumulantFunction[j,i] = slopeThirdCumulantFunction[i,j]
+
+
+    ########################################
+    #   Compute the curvature estimators   #
+    ########################################
+
+    # Normalise the estimators
+    curvatureStats.mean     /= double(N_runs)
+    curvatureStats.variance /= double(N_runs)
+    curvatureStats.skewness /= double(N_runs)
+    curvatureStats.moments /= double(N_runs)
+
+    # Compute the cumulants
+    curvatureStats.cumulantsFromMoments()
+
+    # compute the average curvature moment and cumulant functions.
+    curvatureSecondMomentFunction =  fft(totalCurvatureAvgPower)
+    curvatureSecondMomentFunction /= curvatureSecondMomentFunction.real[0]
+
+	# Compute the bispectrum estimators
+    curvatureBispectrum /= float(N_r)
+    curvatureComponentPower /= float(N_r)
+    curvatureSumPower /= float(N_r)
+
+	# Compute the bicoherence
+    curvatureBicoherence = np.zeros((NN,NN),dtype=np.float)
+    for j in np.arange(NN4+1):
+        for i in np.arange(j,NN2-j+1):
+            if (sqrt(curvatureComponentPower[i,j])*sqrt(curvatureSumPower[i,j]) > 10.**(-12.)):
+				curvatureBicoherence[i,j] = abs(curvatureBispectrum[i,j])/ \
+                        (sqrt(curvatureComponentPower[i,j])*sqrt(curvatureSumPower[i,j]))
+            else:
+				curvatureBicoherence[i,j] = 0.
+
+	# Fill the rest of the bispectrum and bicoherence array
+	bispectrumSymmetry(curvatureBispectrum,NN)
+	bicoherenceSymmetry(curvatureBicoherence,NN)
+
+	# Compute the curvature third moment function
+    curvatureThirdMomentFunction = np.zeros((NN,NN),dtype=np.float)
+    curvatureThirdMomentFunction =  fft(curvatureBispectrum).real
+    curvatureThirdMomentFunction /= curvatureThirdMomentFunction[0,0]
+
+	# Compute the curvature third cumulant function
+    curvatureThirdCumulantFunction = np.zeros((NN,NN),dtype=np.float)
+    for i in np.arange(0,NN/2+1):
+        for j in np.arange(0,i+1):
+			curvatureThirdCumulantFunction[i,j] = (curvatureStats.moments[2]*curvatureThirdMomentFunction[i,j] \
+				- curvatureStats.moments[0]*curvatureStats.moments[1] * \
+				(curvatureSecondMomentFunction[i] + \
+				 curvatureSecondMomentFunction[j] + \
+				 curvatureSecondMomentFunction[abs(j-i)]) \
+				+ 2.*curvatureStats.moments[0]**3.)/curvatureStats.cumulants[2]
+
+			curvatureThirdCumulantFunction[j,i] = curvatureThirdCumulantFunction[i,j]
+
+
+    ########################################
+    #     Compute the glint estimators     #
+    ########################################
+
+    # Normalise the estimators
+    for geom in np.arange(N_geoms) :
+        glintStats[geom].mean     /= double(geom_runsCum[geom])
+        glintStats[geom].variance /= double(geom_runsCum[geom])
+        glintStats[geom].skewness /= double(geom_runsCum[geom])
+        glintStats[geom].moments  /= double(geom_runsCum[geom])
+
+    # Compute the cumulants
+    for geom in np.arange(N_geoms) :
+        glintStats[geom].cumulantsFromMoments()
+
+    # compute the average glint moment and cumulant functions.
+    glintSecondMomentFunction = np.zeros((N_geoms,N),dtype=double)
+    for geom in np.arange(N_geoms) :
+        glintSecondMomentFunction[geom] = fft(totalGlintAvgPower[geom]).real
+        glintSecondMomentFunction[geom] /= glintSecondMomentFunction[geom][0]
+
+	# Compute the bispectrum estimators
+    glintBispectrum /= float(N_r)
+    glintComponentPower /= float(N_r)
+    glintSumPower /= float(N_r)
+
+	# Compute the bicoherence
+    glintBicoherence = np.zeros((N_geoms,NN,NN),dtype=np.float)
+    for geom in np.arange(N_geoms) :
+        for j in np.arange(NN4+1):
+            for i in np.arange(j,NN2-j+1):
+                if (sqrt(glintComponentPower[geom,i,j])*sqrt(glintSumPower[geom,i,j]) > 10.**(-12.)):
+                    glintBicoherence[geom,i,j] = \
+                            abs(glintBispectrum[geom,i,j]) / (sqrt(glintComponentPower[geom,i,j]) * sqrt(glintSumPower[geom,i,j]))
+                else:
+                    glintBicoherence[geom,i,j] = 0.
+
+	# Fill the rest of the bispectrum and bicoherence array
+    for geom in np.arange(N_geoms) :
+        bispectrumSymmetry(glintBispectrum[geom],NN)
+        bicoherenceSymmetry(glintBicoherence[geom],NN)
+
+	# Compute the glint third moment function
+    glintThirdMomentFunction = np.zeros((N_geoms,NN,NN),dtype=np.float)
+    for geom in np.arange(N_geoms) :
+        glintThirdMomentFunction[geom] =  fft(glintBispectrum[geom]).real
+        glintThirdMomentFunction[geom] /= glintThirdMomentFunction[geom,0,0]
+
+	# Compute the glint third cumulant function
+    glintThirdCumulantFunction = np.zeros((N_geoms,NN,NN),dtype=np.float)
+    for geom in np.arange(N_geoms) :
+        for i in np.arange(0,NN/2+1):
+            for j in np.arange(0,i+1):
+                glintThirdCumulantFunction[geom,i,j] = (glintStats[geom].moments[2]*glintThirdMomentFunction[geom,i,j] \
+                    - glintStats[geom].moments[0]*glintStats[geom].moments[1] * \
+                    (glintSecondMomentFunction[geom,i] + \
+                     glintSecondMomentFunction[geom,j] + \
+                     glintSecondMomentFunction[geom,abs(j-i)]) \
+                    + 2.*glintStats[geom].moments[0]**3.)/glintStats[geom].cumulants[2]
+
+                glintThirdCumulantFunction[geom,j,i] = glintThirdCumulantFunction[geom,i,j]
+
+
+    #################################################
+    ###  The elevation and slope summary results  ###
+    #################################################
+
+    #strFormat = "{:30}: {:10.6e}"
+    strFormat = "{:30}: {:15.12f}"
+
+    print '\n####################################'
+    print '            Elevation'
+    print '####################################'
+
+    print ""
+    print strFormat.format("Python Elevation mean",elevStats.mean)
+    #print strFormat.format("Python Elevation stdev",sqrt(elevStats.variance))
+    print strFormat.format("Python Elevation variance",elevStats.variance)
+    print strFormat.format("Python Elevation skewness",elevStats.skewness)
+
+    print ""
+    print strFormat.format("Elevation first moment",elevStats.moments[0])
+    print strFormat.format("Elevation second moment",elevStats.moments[1])
+    print strFormat.format("Elevation third moment",elevStats.moments[2])
+
+    print ""
+    print strFormat.format("Elevation first cumulant",elevStats.cumulants[0])
+    print strFormat.format("Elevation second cumulant",elevStats.cumulants[1])
+    print strFormat.format("Elevation third cumulant",elevStats.cumulants[2])
+
+    print ""
+    print strFormat.format("Elevation mean",elevStats.mean)
+    #print strFormat.format("Elevation stdev",sqrt(elevStats.variance))
+    print strFormat.format("Elevation variance",elevStats.variance)
+    print strFormat.format("Elevation skewness",elevStats.skewness)
+
+    print '\n####################################'
+    print '               Slope'
+    print '####################################'
+
+    print ""
+    print strFormat.format("Python Slope mean",slopeStats.mean)
+    #print strFormat.format("Python Slope stdev",sqrt(slopeStats.variance))
+    print strFormat.format("Python Slope variance",slopeStats.variance)
+    print strFormat.format("Python Slope skewness",slopeStats.skewness)
+
+    print ""
+    print strFormat.format("Slope first moment",slopeStats.moments[0])
+    print strFormat.format("Slope second moment",slopeStats.moments[1])
+    print strFormat.format("Slope third moment",slopeStats.moments[2])
+
+    print ""
+    print strFormat.format("Slope first cumulant",slopeStats.cumulants[0])
+    print strFormat.format("Slope second cumulant",slopeStats.cumulants[1])
+    print strFormat.format("Slope third cumulant",slopeStats.cumulants[2])
+
+    print ""
+    print strFormat.format("Slope mean",slopeStats.mean)
+    #print strFormat.format("Slope stdev",sqrt(slopeStats.variance))
+    print strFormat.format("Slope variance",slopeStats.variance)
+    print strFormat.format("Slope skewness",slopeStats.skewness)
+
+    print '\n####################################'
+    print '              Curvature'
+    print '####################################'
+
+    print ""
+    print strFormat.format("Python Curvature mean",curvatureStats.mean)
+    #print strFormat.format("Python Curvature stdev",sqrt(curvatureStats.variance))
+    print strFormat.format("Python Curvature variance",curvatureStats.variance)
+    print strFormat.format("Python Curvature skewness",curvatureStats.skewness)
+
+    print ""
+    print strFormat.format("Curvature first moment",curvatureStats.moments[0])
+    print strFormat.format("Curvature second moment",curvatureStats.moments[1])
+    print strFormat.format("Curvature third moment",curvatureStats.moments[2])
+
+    print ""
+    print strFormat.format("Curvature first cumulant",curvatureStats.cumulants[0])
+    print strFormat.format("Curvature second cumulant",curvatureStats.cumulants[1])
+    print strFormat.format("Curvature third cumulant",curvatureStats.cumulants[2])
+
+    print ""
+    print strFormat.format("Curvature mean",curvatureStats.mean)
+    #print strFormat.format("Curvature stdev",sqrt(curvatureStats.variance))
+    print strFormat.format("Curvature variance",curvatureStats.variance)
+    print strFormat.format("Curvature skewness",curvatureStats.skewness)
+
+    print '\n####################################'
+    print '              Glint'
+    print '####################################'
+
+    print "\nPython Glint mean, variance and skewness ...\n"
+    for geom in np.arange(Geom.N_geoms) :
+        print "\tGeometry %1d:\t\t%10.6e\t%10.6e\t%10.6e" % (geom,\
+            glintStats[geom].mean,\
+            glintStats[geom].variance,\
+            glintStats[geom].skewness)
+
+    print "Glint moments ...\n"
+    for geom in np.arange(Geom.N_geoms) :
+        print "\tGeometry %1d:\t\t%10.6e\t%10.6e\t%10.6e" % (geom,\
+            glintStats[geom].moments[0],\
+            glintStats[geom].moments[1],\
+            glintStats[geom].moments[2])
+
+    print "\nGlint cumulants ...\n"
+    for geom in np.arange(Geom.N_geoms) :
+        print "\tGeometry %1d:\t\t%10.6e\t%10.6e\t%10.6e" % (geom,\
+            glintStats[geom].cumulants[0],\
+            glintStats[geom].cumulants[1],\
+            glintStats[geom].cumulants[2])
 
 def _argparse():
 
