@@ -38,7 +38,8 @@ Minimum commandline:
 
 where...
 
-    INPUTFILES: The fully qualified path to the input files. May be a directory or a file glob.
+    INPUTFILES: The fully qualified path to the input files. May be a directory 
+                or a file glob.
 
 
 Created by Geoff Cureton on 2011-03-06.
@@ -80,6 +81,8 @@ from numpy import float64 as double
 
 from scipy import stats as stats
 import time
+from datetime import datetime,timedelta
+
 
 #import matplotlib
 #import matplotlib.cm as cm
@@ -94,6 +97,7 @@ import time
 
 import tables as pytables
 from tables import exceptions as pyEx
+import h5py
 
 # every module should have a LOG object
 sourcename= file_Id.split(" ")
@@ -145,7 +149,8 @@ class GeomStruct :
         beta = 0.68*d2r
 
         self.source_angle = ((self.start_angle + np.arange(N_geoms,dtype=double)*self.d_angle))*d2r
-        self.detector_angle = 0.0*d2r
+        #self.detector_angle = 0.0*d2r
+        self.detector_angle = 0.0*self.detector_angle*d2r
         gamma = (self.source_angle - self.detector_angle)/2.
         self.xi_0 = tan(gamma)
         self.xi_min = self.xi_0 - (1.0 + self.xi_0**2.)*(beta/4.)
@@ -190,12 +195,12 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 
     Scale = ScaleStruct(N, NN, delta_x)
 
-    print 'Scale.N       = %15d' % (Scale.N)
-    print 'Scale.delta_x = %15.6f meters' % (Scale.delta_x)
-    print 'Scale.x_max   = %15.6f meters' % (Scale.x_max)
-    print 'Scale.k_max   = %15.6f meters^{-1}' % (Scale.k_max)
-    print 'Scale.delta_k = %15.6f meters^{-1}' % (Scale.delta_k)
-    print 'Scale.k_N     = %15.6f meters^{-1}' % (Scale.k_N)
+    LOG.info("Scale.N       = {:12d}".format(Scale.N))
+    LOG.info("Scale.delta_x = {:12.6f} meters".format(Scale.delta_x))
+    LOG.info("Scale.x_max   = {:12.6f} meters".format(Scale.x_max))
+    LOG.info("Scale.k_max   = {:12.6f} meters^{{-1}}".format(Scale.k_max))
+    LOG.info("Scale.delta_k = {:12.6f} meters^{{-1}}".format(Scale.delta_k))
+    LOG.info("Scale.k_N     = {:12.6f} meters^{{-1}}".format(Scale.k_N))
 
     # Make local copies of Scale attributes
     x_max   = Scale.x_max
@@ -226,26 +231,32 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 
     phillips_elev_spectrum(Scale,ElevPower,NLCoupling,specExp)
 
-    print '\nFirst component indicies for free waves ...',NLCoupling.free1,Scale.k[NLCoupling.free1]/Scale.k_N
+    LOG.info("First component indicies for free waves: {} {}"
+            .format(NLCoupling.free1,Scale.k[NLCoupling.free1]/Scale.k_N))
 
-    print 'Second component indicies for free waves ...',NLCoupling.free2,Scale.k[NLCoupling.free2]/Scale.k_N
+    LOG.info("Second component indicies for free waves: {} {}"
+            .format(NLCoupling.free2,Scale.k[NLCoupling.free2]/Scale.k_N))
 
-    print 'Indicies for bound waves...',NLCoupling.bound,Scale.k[NLCoupling.bound]/Scale.k_N
+    LOG.info("Indicies for bound waves: {} {}"
+            .format(NLCoupling.bound,Scale.k[NLCoupling.bound]/Scale.k_N))
 
     totalElevPower = ElevPower.totalPower
     primaryElevPower = ElevPower.primaryPower
     nlElevPower = ElevPower.nlPower
 
-    print "\nElevation stdev from power vector: %10.6f meters " % \
-        (sqrt(np.sum(totalElevPower)*delta_k))
-    print "Elevation variance from power vector: %10.6f meters^{2} " % \
-        (np.sum(totalElevPower)*delta_k)
+    LOG.info("Elevation stdev from power vector:    {:12.6f} meters "
+            .format(sqrt(np.sum(totalElevPower)*delta_k)))
+    LOG.info("Elevation variance from power vector: {:12.6f} meters^{{2}} "
+            .format(np.sum(totalElevPower)*delta_k))
 
-    print "\nTotal elevation power at the bound wavenumbers...",totalElevPower[NLCoupling.bound]
-    print "Free elevation power at the bound wavenumbers...",ElevPower.primaryPower[NLCoupling.bound]
-    print "Bound elevation power at the bound wavenumbers...",ElevPower.nlPower[NLCoupling.bound]
-    print "Ratio of bound to free elevation power at the bound wavenumbers...",\
-            ElevPower.nlPower[NLCoupling.bound]/totalElevPower[NLCoupling.bound]
+    LOG.info("Total elevation power at the bound wavenumbers: {:10}"
+            .format(totalElevPower[NLCoupling.bound]))
+    LOG.info("Free elevation power at the bound wavenumbers:  {:10}"
+            .format(ElevPower.primaryPower[NLCoupling.bound]))
+    LOG.info("Bound elevation power at the bound wavenumbers: {:10}"
+            .format(ElevPower.nlPower[NLCoupling.bound]))
+    LOG.info("Ratio of bound to free elevation power at the bound wavenumbers: {:10}"
+            .format(ElevPower.nlPower[NLCoupling.bound]/totalElevPower[NLCoupling.bound]))
 
     # Initialise the slope power spectrum structure
     SlopePower = copy.deepcopy(ElevPower)
@@ -257,37 +268,43 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
     primarySlopePower = SlopePower.primaryPower
     nlSlopePower = SlopePower.nlPower
 
-    print "\nSlope stdev from power vector: %10.6f meters " % \
-        (sqrt(np.sum(totalSlopePower)*delta_k))
-    print "Slope variance from power vector: %10.6f meters^{2} " % \
-        (np.sum(totalSlopePower)*delta_k)
+    LOG.info("Slope stdev from power vector:    {:12.6f} meters "
+            .format(sqrt(np.sum(totalSlopePower)*delta_k)))
+    LOG.info("Slope variance from power vector: {:12.6f} meters^{{2}} "
+            .format(np.sum(totalSlopePower)*delta_k))
 
-    print "\nTotal slope power at the bound wavenumbers...",totalSlopePower[NLCoupling.bound]
-    print "Free slope power at the bound wavenumbers...",SlopePower.primaryPower[NLCoupling.bound]
-    print "Bound slope power at the bound wavenumbers...",SlopePower.nlPower[NLCoupling.bound]
-    print "Ratio of bound to free slope power at the bound wavenumbers...",\
-            SlopePower.nlPower[NLCoupling.bound]/totalSlopePower[NLCoupling.bound]
+    LOG.info("Total slope power at the bound wavenumbers: {:10}"
+            .format(totalSlopePower[NLCoupling.bound]))
+    LOG.info("Free slope power at the bound wavenumbers:  {:10}"
+            .format(SlopePower.primaryPower[NLCoupling.bound]))
+    LOG.info("Bound slope power at the bound wavenumbers: {:10}"
+            .format(SlopePower.nlPower[NLCoupling.bound]))
+    LOG.info("Ratio of bound to free slope power at the bound wavenumbers: {:10}"
+            .format(SlopePower.nlPower[NLCoupling.bound]/totalSlopePower[NLCoupling.bound]))
 
     # Initialise the curvature power spectrum structure
-    CurvaturePower = copy.deepcopy(ElevPower)
-    CurvaturePower.primaryPower = k*k*k*k*ElevPower.primaryPower
-    CurvaturePower.nlPower = k*k*k*k*ElevPower.nlPower
-    CurvaturePower.totalPower = k*k*k*k*ElevPower.totalPower
+    #CurvaturePower = copy.deepcopy(ElevPower)
+    #CurvaturePower.primaryPower = k*k*k*k*ElevPower.primaryPower
+    #CurvaturePower.nlPower = k*k*k*k*ElevPower.nlPower
+    #CurvaturePower.totalPower = k*k*k*k*ElevPower.totalPower
 
-    totalCurvaturePower = CurvaturePower.totalPower
-    primaryCurvaturePower = CurvaturePower.primaryPower
-    nlCurvaturePower = CurvaturePower.nlPower
+    #totalCurvaturePower = CurvaturePower.totalPower
+    #primaryCurvaturePower = CurvaturePower.primaryPower
+    #nlCurvaturePower = CurvaturePower.nlPower
 
-    print "\nCurvature stdev from power vector: %10.6f meters^{-1}" % \
-        (sqrt(np.sum(totalCurvaturePower)*delta_k))
-    print "Curvature variance from power vector: %10.6f meters^{-2}" % \
-        (np.sum(totalCurvaturePower)*delta_k)
+    #LOG.info("Curvature stdev from power vector:    {:12.6f} meters^{{-1}} "
+            #.format(sqrt(np.sum(totalCurvaturePower)*delta_k)))
+    #LOG.info("Curvature variance from power vector: {:12.6f} meters^{{-2}} "
+            #.format(np.sum(totalCurvaturePower)*delta_k))
 
-    print "\nTotal curvature power at the bound wavenumbers...",totalCurvaturePower[NLCoupling.bound]
-    print "Free curvature power at the bound wavenumbers...",CurvaturePower.primaryPower[NLCoupling.bound]
-    print "Bound curvature power at the bound wavenumbers...",CurvaturePower.nlPower[NLCoupling.bound]
-    print "Ratio of bound to free curvature power at the bound wavenumbers...",\
-            CurvaturePower.nlPower[NLCoupling.bound]/totalCurvaturePower[NLCoupling.bound]
+    #LOG.info("Total curvature power at the bound wavenumbers: {:10}"
+            #.format(totalCurvaturePower[NLCoupling.bound]))
+    #LOG.info("Free curvature power at the bound wavenumbers:  {:10}"
+            #.format(CurvaturePower.primaryPower[NLCoupling.bound]))
+    #LOG.info("Bound curvature power at the bound wavenumbers: {:10}"
+            #.format(CurvaturePower.nlPower[NLCoupling.bound]))
+    #LOG.info("Ratio of bound to free curvature power at the bound wavenumbers: {:10}"
+            #.format(CurvaturePower.nlPower[NLCoupling.bound]/totalCurvaturePower[NLCoupling.bound]))
 
     #   Compute the total elevation amplitude, phase and spectrum,
     #   and the second moment function 
@@ -305,22 +322,22 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
     nlElevAmplitude = sqrt(0.5*nlElevPower*delta_k)
     nlElevAmplitude[N/2+1 :] = nlElevAmplitude[1 : N/2][::-1]
 
-    print "\nElevation stdev from amplitude vector: %10.6f meters " % \
-            (sqrt(np.sum(totalElevAmplitude**2.)))
-    print "Elevation variance from amplitude vector: %10.6f meters^{2}" % \
-            (np.sum(totalElevAmplitude**2.))
+    LOG.info("Elevation stdev from amplitude vector:    {:12.6f} meters"
+            .format(sqrt(np.sum(totalElevAmplitude**2.))))
+    LOG.info("Elevation variance from amplitude vector: {:12.6f} meters^{{2}}"
+            .format(np.sum(totalElevAmplitude**2.)))
 
     testElevPhase = np.random.rand(N)*2.*pi - pi
     totalElevSpectrum = totalElevAmplitude*(cos(testElevPhase) + 1j*sin(testElevPhase))
     totalElevSpectrum[N/2+1 :] = np.conjugate(totalElevSpectrum[1 : N/2][::-1])
     totalElevSurface = fft(totalElevSpectrum)
 
-    print "\nElevation mean from surface:    %10.6f meters " % \
-            np.mean(totalElevSurface.real)
-    print "Elevation stdev from surface:    %10.6f meters " % \
-            np.std(totalElevSurface.real)
-    print "Elevation variance from surface: %10.6f meters^{2} " % \
-            np.var(totalElevSurface.real)
+    LOG.info("Elevation mean from surface:     {:12.6f} meters"
+            .format(np.mean(totalElevSurface.real)))
+    LOG.info("Elevation stdev from surface:    {:12.6f} meters"
+            .format(np.std(totalElevSurface.real)))
+    LOG.info("Elevation variance from surface: {:12.6f} meters^{{2}}"
+            .format(np.var(totalElevSurface.real)))
 
     totalElevAvgPower = np.zeros(N,dtype=double)
     primaryElevAvgPower = np.zeros(N,dtype=double)
@@ -349,21 +366,21 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
     nlSlopeSpectrum = np.zeros(N,dtype=np.complex64)
     nlSlopeSurface = np.zeros(N,dtype=np.complex64)
 
-    print "\nSlope stdev from amplitude vector: %10.6f" % \
-            (sqrt(np.sum(totalSlopeAmplitude**2.)))
-    print "Slope variance from amplitude vector: %10.6f" % \
-            (np.sum(totalSlopeAmplitude**2.))
+    LOG.info("Slope stdev from amplitude vector:    {:12.6f}"
+            .format(sqrt(np.sum(totalSlopeAmplitude**2.))))
+    LOG.info("Slope variance from amplitude vector: {:12.6f}"
+            .format(np.sum(totalSlopeAmplitude**2.)))
 
     totalSlopeSpectrum = totalSlopeAmplitude*(+sin(testElevPhase) - 1j*cos(testElevPhase))
     totalSlopeSpectrum[N/2+1 :] = np.conjugate(totalSlopeSpectrum[1L : N/2][::-1])
     totalSlopeSurface = fft(totalSlopeSpectrum)
 
-    print "\nSlope mean from surface:    %10.6f" % \
-            np.mean(totalSlopeSurface.real)
-    print "Slope stdev from surface:    %10.6f" % \
-            np.std(totalSlopeSurface.real)
-    print "Slope variance from surface: %10.6f" % \
-            np.var(totalSlopeSurface.real)
+    LOG.info("Slope mean from surface:     {:12.6f}"
+            .format(np.mean(totalSlopeSurface.real)))
+    LOG.info("Slope stdev from surface:    {:12.6f}"
+            .format(np.std(totalSlopeSurface.real)))
+    LOG.info("Slope variance from surface: {:12.6f}"
+            .format(np.var(totalSlopeSurface.real)))
 
     totalSlopeAvgPower = np.zeros(N,dtype=double)
     primarySlopeAvgPower = np.zeros(N,dtype=double)
@@ -375,47 +392,47 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 
     #    Compute the total curvature amplitude, phase and spectrum
 
-    totalCurvatureAmplitude = np.zeros(N,dtype=double)
-    totalCurvatureAmplitude = sqrt(0.5*totalCurvaturePower*delta_k)
-    totalCurvatureAmplitude[N/2+1 :] = totalCurvatureAmplitude[1L : N/2][::-1]
-    totalCurvatureSpectrum = np.zeros(N,dtype=np.complex64)
-    totalCurvatureSurface = np.zeros(N,dtype=np.complex64)
+    #totalCurvatureAmplitude = np.zeros(N,dtype=double)
+    #totalCurvatureAmplitude = sqrt(0.5*totalCurvaturePower*delta_k)
+    #totalCurvatureAmplitude[N/2+1 :] = totalCurvatureAmplitude[1L : N/2][::-1]
+    #totalCurvatureSpectrum = np.zeros(N,dtype=np.complex64)
+    #totalCurvatureSurface = np.zeros(N,dtype=np.complex64)
 
-    primaryCurvatureAmplitude = np.zeros(N,dtype=double)
-    primaryCurvatureAmplitude = sqrt(0.5*primaryCurvaturePower*delta_k)
-    primaryCurvatureAmplitude[N/2+1 :] = primaryCurvatureAmplitude[1L : N/2][::-1]
-    primaryCurvatureSpectrum = np.zeros(N,dtype=np.complex64)
-    primaryCurvatureSurface = np.zeros(N,dtype=np.complex64)
+    #primaryCurvatureAmplitude = np.zeros(N,dtype=double)
+    #primaryCurvatureAmplitude = sqrt(0.5*primaryCurvaturePower*delta_k)
+    #primaryCurvatureAmplitude[N/2+1 :] = primaryCurvatureAmplitude[1L : N/2][::-1]
+    #primaryCurvatureSpectrum = np.zeros(N,dtype=np.complex64)
+    #primaryCurvatureSurface = np.zeros(N,dtype=np.complex64)
 
-    nlCurvatureAmplitude = np.zeros(N,dtype=double)
-    nlCurvatureAmplitude = sqrt(0.5*nlCurvaturePower*delta_k)
-    nlCurvatureAmplitude[N/2+1 :] = nlCurvatureAmplitude[1L : N/2][::-1]
-    nlCurvatureSpectrum = np.zeros(N,dtype=np.complex64)
-    nlCurvatureSurface = np.zeros(N,dtype=np.complex64)
+    #nlCurvatureAmplitude = np.zeros(N,dtype=double)
+    #nlCurvatureAmplitude = sqrt(0.5*nlCurvaturePower*delta_k)
+    #nlCurvatureAmplitude[N/2+1 :] = nlCurvatureAmplitude[1L : N/2][::-1]
+    #nlCurvatureSpectrum = np.zeros(N,dtype=np.complex64)
+    #nlCurvatureSurface = np.zeros(N,dtype=np.complex64)
 
-    print "\nCurvature stdev from amplitude vector: %10.6f meters^{-1} " % \
-            (sqrt(np.sum(totalCurvatureAmplitude**2.)))
-    print "Curvature variance from amplitude vector: %10.6f meters^{-2}" % \
-            (np.sum(totalCurvatureAmplitude**2.))
+    #LOG.info("Curvature stdev from amplitude vector:    {:12.6f} meters^{{-1}}"
+            #.format(sqrt(np.sum(totalCurvatureAmplitude**2.))))
+    #LOG.info("Curvature variance from amplitude vector: {:12.6f} meters^{{-2}}"
+            #.format(np.sum(totalCurvatureAmplitude**2.)))
 
-    totalCurvatureSpectrum = totalCurvatureAmplitude*(-cos(testElevPhase) - 1j*sin(testElevPhase))
-    totalCurvatureSpectrum[N/2+1 :] = np.conjugate(totalCurvatureSpectrum[1L : N/2][::-1])
-    totalCurvatureSurface = fft(totalCurvatureSpectrum)
+    #totalCurvatureSpectrum = totalCurvatureAmplitude*(-cos(testElevPhase) - 1j*sin(testElevPhase))
+    #totalCurvatureSpectrum[N/2+1 :] = np.conjugate(totalCurvatureSpectrum[1L : N/2][::-1])
+    #totalCurvatureSurface = fft(totalCurvatureSpectrum)
 
-    print "\nCurvature mean from surface:    %10.6f meters^{-1} " % \
-            np.mean(totalCurvatureSurface.real)
-    print "Curvature stdev from surface:    %10.6f meters^{-1}" % \
-            np.std(totalCurvatureSurface.real)
-    print "Curvature variance from surface: %10.6f meters^{-2} " % \
-            np.var(totalCurvatureSurface.real)
+    #LOG.info("Curvature mean from surface:     {:12.6f} meters^{{-1}}"
+            #.format(np.mean(totalCurvatureSurface.real)))
+    #LOG.info("Curvature stdev from surface:    {:12.6f} meters^{{-1}}"
+            #.format(np.std(totalCurvatureSurface.real)))
+    #LOG.info("Curvature variance from surface: {:12.6f} meters^{{-2}}"
+            #.format(np.var(totalCurvatureSurface.real)))
 
-    totalCurvatureAvgPower = np.zeros(N,dtype=double)
-    primaryCurvatureAvgPower = np.zeros(N,dtype=double)
-    nlCurvatureAvgPower = np.zeros(N,dtype=double)
+    #totalCurvatureAvgPower = np.zeros(N,dtype=double)
+    #primaryCurvatureAvgPower = np.zeros(N,dtype=double)
+    #nlCurvatureAvgPower = np.zeros(N,dtype=double)
 
-    curvatureBispectrum = np.zeros((NN,NN),dtype=np.complex)
-    curvatureComponentPower = np.zeros((NN,NN),dtype=np.float)
-    curvatureSumPower = np.zeros((NN,NN),dtype=np.float)
+    #curvatureBispectrum = np.zeros((NN,NN),dtype=np.complex)
+    #curvatureComponentPower = np.zeros((NN,NN),dtype=np.float)
+    #curvatureSumPower = np.zeros((NN,NN),dtype=np.float)
 
 
     #   Define the glint, glint spectrum and glint power
@@ -433,7 +450,7 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
 
     elevStats = DataStatsStruct(numMoments)
     slopeStats = DataStatsStruct(numMoments)
-    curvatureStats = DataStatsStruct(numMoments)
+    #curvatureStats = DataStatsStruct(numMoments)
     glintStats = [DataStatsStruct(numMoments) for geoms in np.arange(N_geoms) ]
 
     #   Loop through the surface realisations for the quadratically
@@ -454,8 +471,8 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
         t2 = time.time()
         #print "Elapsed time = ",t2-t1
         if ((t2-t1) > 0.5):
-            print "\n>>>>>>>>>>>>>>>>>>>>>\n"
-            print "Computing realisation: %d at time %f" % (N_r_cum,(t2-t1))
+            LOG.info(">>>>>>>>>>>>>>>>>>>>>")
+            LOG.info("Computing realisation: %d at time %f" % (N_r_cum,(t2-t1)))
             t1 = time.time()
 
 
@@ -579,30 +596,30 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
         #################################################################
         
         ### Calculate the curvature spectrum for the free waves
-        primaryCurvatureSpectrum = primaryCurvatureAmplitude*(-cos(primaryElevPhase) - 1j*sin(primaryElevPhase))
-        primaryCurvatureSpectrum[N/2+1 :] = np.conjugate(primaryCurvatureSpectrum[1 : N/2][::-1])
+        #primaryCurvatureSpectrum = primaryCurvatureAmplitude*(-cos(primaryElevPhase) - 1j*sin(primaryElevPhase))
+        #primaryCurvatureSpectrum[N/2+1 :] = np.conjugate(primaryCurvatureSpectrum[1 : N/2][::-1])
 
         ### Calculate the curvature spectrum for the bound waves
-        nlCurvatureSpectrum = nlCurvatureAmplitude*(-cos(nlElevPhase) - 1j*sin(nlElevPhase))
-        nlCurvatureSpectrum[N/2+1 :] = np.conjugate(nlCurvatureSpectrum[1 :N/2][::-1])
+        #nlCurvatureSpectrum = nlCurvatureAmplitude*(-cos(nlElevPhase) - 1j*sin(nlElevPhase))
+        #nlCurvatureSpectrum[N/2+1 :] = np.conjugate(nlCurvatureSpectrum[1 :N/2][::-1])
 
         ### Compute specific realisation of the free and bound waves. Nonlinear curvature
         ### (totalCurvatureSurface) is sum of free and bound waves.
-        primaryCurvatureSurface = fft(primaryCurvatureSpectrum).real                    ### Free waves
+        #primaryCurvatureSurface = fft(primaryCurvatureSpectrum).real   ### Free waves
         #primaryCurvatureSurface *= 1./((1. + primarySlopeSurface**2.)**1.5)
 
-        nlCurvatureSurface = fft(nlCurvatureSpectrum).real                              ### Bound waves
+        #nlCurvatureSurface = fft(nlCurvatureSpectrum).real             ### Bound waves
         #nlCurvatureSurface *= 1./((1. + nlSlopeSurface**2.)**1.5)
 
-        totalCurvatureSurface = primaryCurvatureSurface + nlCurvatureSurface       ### Total surface
+        #totalCurvatureSurface = primaryCurvatureSurface + nlCurvatureSurface   ### Total surface
 
         #totalCurvatureSurface *= 1./(    (1. + totalSlopeSurface**2.)**1.5)
-        #totalCurvatureSurface *= 1./(sqrt(1. + totalSlopeSurface**2.)**3.)       ### Total surface
+        #totalCurvatureSurface *= 1./(sqrt(1. + totalSlopeSurface**2.)**3.)    ### Total surface
 
         ### Compute the average power spectrum for free, bound and total elevation waves
-        primaryCurvatureAvgPower += abs(ifft(primaryCurvatureSurface))**2.
-        nlCurvatureAvgPower += abs(ifft(nlCurvatureSurface))**2.
-        totalCurvatureAvgPower += abs(ifft(totalCurvatureSurface))**2.
+        #primaryCurvatureAvgPower += abs(ifft(primaryCurvatureSurface))**2.
+        #nlCurvatureAvgPower += abs(ifft(nlCurvatureSurface))**2.
+        #totalCurvatureAvgPower += abs(ifft(totalCurvatureSurface))**2.
 
         #print "\n\tCurvature stdev from power vector:    %10.6e meters" % \
             #(sqrt(np.sum(abs(ifft(totalCurvatureSurface.real))**2.)))
@@ -610,32 +627,32 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
             #(np.sum(abs(ifft(totalCurvatureSurface.real))**2.))
 
         # Compute the curvature estimators
-        curvatureStats.mean     += np.mean(totalCurvatureSurface.real)
-        curvatureStats.variance += np.var(totalCurvatureSurface.real)
-        curvatureStats.skewness += stats.skew(totalCurvatureSurface.real)
+        #curvatureStats.mean     += np.mean(totalCurvatureSurface.real)
+        #curvatureStats.variance += np.var(totalCurvatureSurface.real)
+        #curvatureStats.skewness += stats.skew(totalCurvatureSurface.real)
 
-        curvatureStats.moments += [ np.sum(totalCurvatureSurface    )/double(N), \
-                                    np.sum(totalCurvatureSurface**2.)/double(N), \
-                                    np.sum(totalCurvatureSurface**3.)/double(N) ]
+        #curvatureStats.moments += [ np.sum(totalCurvatureSurface    )/double(N), \
+                                    #np.sum(totalCurvatureSurface**2.)/double(N), \
+                                    #np.sum(totalCurvatureSurface**3.)/double(N) ]
 
         # Compute the Fourier spectrum of the total surface
-        totalCurvatureSpectrum = ifft(totalCurvatureSurface)
+        #totalCurvatureSpectrum = ifft(totalCurvatureSurface)
 
         # Calculate the curvature bispectrum (reduced domain) for this realisation
-        for j in np.arange(NN4+1):
-            for i in np.arange(j,NN2-j+1):
-                curvatureBispectrum[i,j] += totalCurvatureSpectrum[i]*totalCurvatureSpectrum[j] \
-                        * np.conjugate(totalCurvatureSpectrum[i+j])
+        #for j in np.arange(NN4+1):
+            #for i in np.arange(j,NN2-j+1):
+                #curvatureBispectrum[i,j] += totalCurvatureSpectrum[i]*totalCurvatureSpectrum[j] \
+                        #* np.conjugate(totalCurvatureSpectrum[i+j])
 
         # Calculate the curvature component power spectrum (reduced domain) for this realisation
-        for j in np.arange(NN4+1):
-            for i in np.arange(j,NN2-j+1):
-                curvatureComponentPower[i,j] += (abs(totalCurvatureSpectrum[i]*totalCurvatureSpectrum[j]))**2.
+        #for j in np.arange(NN4+1):
+            #for i in np.arange(j,NN2-j+1):
+                #curvatureComponentPower[i,j] += (abs(totalCurvatureSpectrum[i]*totalCurvatureSpectrum[j]))**2.
 
         # Calculate the curvature sum power spectrum (reduced domain) for this realisation
-        for j in np.arange(NN4+1):
-            for i in np.arange(j,NN2-j+1):
-                curvatureSumPower[i,j] += (abs(totalCurvatureSpectrum[i+j]))**2.
+        #for j in np.arange(NN4+1):
+            #for i in np.arange(j,NN2-j+1):
+                #curvatureSumPower[i,j] += (abs(totalCurvatureSpectrum[i+j]))**2.
 
 
 
@@ -758,47 +775,57 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
     elevSecondMomentFunction =  fft(totalElevAvgPower)
     elevSecondMomentFunction /= elevSecondMomentFunction.real[0]
 
+    LOG.info("elevSecondMomentFunction = {}".format(elevSecondMomentFunction.real[:N2]))
+
     # Compute the second order elev cumulant function
     elevSecondCumulantFunction = (elevStats.moments[1]*elevSecondMomentFunction - 
             elevStats.moments[0]**2.)/elevStats.cumulants[1]
 
-	# Compute the bispectrum estimators
+    LOG.info("elevSecondCumulantFunction = {}".format(elevSecondCumulantFunction.real[:N2]))
+
+    # Compute the bispectrum estimators
     elevBispectrum /= float(N_r)
     elevComponentPower /= float(N_r)
     elevSumPower /= float(N_r)
 
-	# Compute the bicoherence
+    # Compute the bicoherence
     elevBicoherence = np.zeros((NN,NN),dtype=np.float)
     for j in np.arange(NN4+1):
         for i in np.arange(j,NN2-j+1):
             if (sqrt(elevComponentPower[i,j])*sqrt(elevSumPower[i,j]) > 10.**(-12.)):
-				elevBicoherence[i,j] = abs(elevBispectrum[i,j])/ \
+                elevBicoherence[i,j] = abs(elevBispectrum[i,j])/ \
                         (sqrt(elevComponentPower[i,j])*sqrt(elevSumPower[i,j]))
             else:
-				elevBicoherence[i,j] = 0.
+                elevBicoherence[i,j] = 0.
 
-	# Fill the rest of the bispectrum and bicoherence array
-	bispectrumSymmetry(elevBispectrum,NN)
-	bicoherenceSymmetry(elevBicoherence,NN)
+    # Fill the rest of the bispectrum and bicoherence array
+    bispectrumSymmetry(elevBispectrum,NN)
+    bicoherenceSymmetry(elevBicoherence,NN)
 
-	# Compute the elevation third moment function
+    # Compute the elevation third moment function
     elevThirdMomentFunction = np.zeros((NN,NN),dtype=np.float)
     elevThirdMomentFunction =  fft(elevBispectrum).real
     elevThirdMomentFunction /= elevThirdMomentFunction[0,0]
 
-	# Compute the elevation third cumulant function
+    LOG.info("elevThirdMomentFunction = \n{}".format(elevThirdMomentFunction[:10,:10]))
+
+    # Compute the elevation third cumulant function
     elevThirdCumulantFunction = np.zeros((NN,NN),dtype=np.float)
     for i in np.arange(0,NN/2+1):
         for j in np.arange(0,i+1):
-			elevThirdCumulantFunction[i,j] = (elevStats.moments[2]*elevThirdMomentFunction[i,j] \
-				- elevStats.moments[0]*elevStats.moments[1] * \
-				(elevSecondMomentFunction[i] + \
-				 elevSecondMomentFunction[j] + \
-				 elevSecondMomentFunction[abs(j-i)]) \
-				+ 2.*elevStats.moments[0]**3.)/elevStats.cumulants[2]
+            elevThirdCumulantFunction[i,j] = (elevStats.moments[2]*elevThirdMomentFunction[i,j] \
+                    - elevStats.moments[0]*elevStats.moments[1] * \
+                    (elevSecondMomentFunction[i] + \
+                     elevSecondMomentFunction[j] + \
+                     elevSecondMomentFunction[abs(j-i)]) \
+                    + 2.*elevStats.moments[0]**3.)/elevStats.cumulants[2]
 
-			elevThirdCumulantFunction[j,i] = elevThirdCumulantFunction[i,j]
+            elevThirdCumulantFunction[j,i] = elevThirdCumulantFunction[i,j]
 
+    LOG.info("elevThirdCumulantFunction = \n{}".format(elevThirdCumulantFunction[:10,:10]))
+
+
+    #return 0
 
     ########################################
     #     Compute the slope estimators     #
@@ -817,42 +844,42 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
     slopeSecondMomentFunction =  fft(totalSlopeAvgPower)
     slopeSecondMomentFunction /= slopeSecondMomentFunction.real[0]
 
-	# Compute the bispectrum estimators
+    # Compute the bispectrum estimators
     slopeBispectrum /= float(N_r)
     slopeComponentPower /= float(N_r)
     slopeSumPower /= float(N_r)
 
-	# Compute the bicoherence
+    # Compute the bicoherence
     slopeBicoherence = np.zeros((NN,NN),dtype=np.float)
     for j in np.arange(NN4+1):
         for i in np.arange(j,NN2-j+1):
             if (sqrt(slopeComponentPower[i,j])*sqrt(slopeSumPower[i,j]) > 10.**(-12.)):
 				slopeBicoherence[i,j] = abs(slopeBispectrum[i,j])/ \
-                        (sqrt(slopeComponentPower[i,j])*sqrt(slopeSumPower[i,j]))
+                (sqrt(slopeComponentPower[i,j])*sqrt(slopeSumPower[i,j]))
             else:
-				slopeBicoherence[i,j] = 0.
+                slopeBicoherence[i,j] = 0.
 
-	# Fill the rest of the bispectrum and bicoherence array
-	bispectrumSymmetry(slopeBispectrum,NN)
-	bicoherenceSymmetry(slopeBicoherence,NN)
+    # Fill the rest of the bispectrum and bicoherence array
+    bispectrumSymmetry(slopeBispectrum,NN)
+    bicoherenceSymmetry(slopeBicoherence,NN)
 
-	# Compute the slope third moment function
+    # Compute the slope third moment function
     slopeThirdMomentFunction = np.zeros((NN,NN),dtype=np.float)
     slopeThirdMomentFunction =  fft(slopeBispectrum).real
     slopeThirdMomentFunction /= slopeThirdMomentFunction[0,0]
 
-	# Compute the slope third cumulant function
+    # Compute the slope third cumulant function
     slopeThirdCumulantFunction = np.zeros((NN,NN),dtype=np.float)
     for i in np.arange(0,NN/2+1):
         for j in np.arange(0,i+1):
-			slopeThirdCumulantFunction[i,j] = (slopeStats.moments[2]*slopeThirdMomentFunction[i,j] \
-				- slopeStats.moments[0]*slopeStats.moments[1] * \
-				(slopeSecondMomentFunction[i] + \
-				 slopeSecondMomentFunction[j] + \
-				 slopeSecondMomentFunction[abs(j-i)]) \
-				+ 2.*slopeStats.moments[0]**3.)/slopeStats.cumulants[2]
+            slopeThirdCumulantFunction[i,j] = (slopeStats.moments[2]*slopeThirdMomentFunction[i,j] \
+                    - slopeStats.moments[0]*slopeStats.moments[1] * \
+                    (slopeSecondMomentFunction[i] + \
+                     slopeSecondMomentFunction[j] + \
+                     slopeSecondMomentFunction[abs(j-i)]) \
+                    + 2.*slopeStats.moments[0]**3.)/slopeStats.cumulants[2]
 
-			slopeThirdCumulantFunction[j,i] = slopeThirdCumulantFunction[i,j]
+            slopeThirdCumulantFunction[j,i] = slopeThirdCumulantFunction[i,j]
 
 
     ########################################
@@ -860,54 +887,54 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
     ########################################
 
     # Normalise the estimators
-    curvatureStats.mean     /= double(N_runs)
-    curvatureStats.variance /= double(N_runs)
-    curvatureStats.skewness /= double(N_runs)
-    curvatureStats.moments /= double(N_runs)
+    #curvatureStats.mean     /= double(N_runs)
+    #curvatureStats.variance /= double(N_runs)
+    #curvatureStats.skewness /= double(N_runs)
+    #curvatureStats.moments /= double(N_runs)
 
     # Compute the cumulants
-    curvatureStats.cumulantsFromMoments()
+    #curvatureStats.cumulantsFromMoments()
 
     # compute the average curvature moment and cumulant functions.
-    curvatureSecondMomentFunction =  fft(totalCurvatureAvgPower)
-    curvatureSecondMomentFunction /= curvatureSecondMomentFunction.real[0]
+    #curvatureSecondMomentFunction =  fft(totalCurvatureAvgPower)
+    #curvatureSecondMomentFunction /= curvatureSecondMomentFunction.real[0]
 
 	# Compute the bispectrum estimators
-    curvatureBispectrum /= float(N_r)
-    curvatureComponentPower /= float(N_r)
-    curvatureSumPower /= float(N_r)
+    #curvatureBispectrum /= float(N_r)
+    #curvatureComponentPower /= float(N_r)
+    #curvatureSumPower /= float(N_r)
 
 	# Compute the bicoherence
-    curvatureBicoherence = np.zeros((NN,NN),dtype=np.float)
-    for j in np.arange(NN4+1):
-        for i in np.arange(j,NN2-j+1):
-            if (sqrt(curvatureComponentPower[i,j])*sqrt(curvatureSumPower[i,j]) > 10.**(-12.)):
-				curvatureBicoherence[i,j] = abs(curvatureBispectrum[i,j])/ \
-                        (sqrt(curvatureComponentPower[i,j])*sqrt(curvatureSumPower[i,j]))
-            else:
-				curvatureBicoherence[i,j] = 0.
+    #curvatureBicoherence = np.zeros((NN,NN),dtype=np.float)
+    #for j in np.arange(NN4+1):
+        #for i in np.arange(j,NN2-j+1):
+            #if (sqrt(curvatureComponentPower[i,j])*sqrt(curvatureSumPower[i,j]) > 10.**(-12.)):
+				#curvatureBicoherence[i,j] = abs(curvatureBispectrum[i,j])/ \
+                        #(sqrt(curvatureComponentPower[i,j])*sqrt(curvatureSumPower[i,j]))
+            #else:
+				#curvatureBicoherence[i,j] = 0.
 
 	# Fill the rest of the bispectrum and bicoherence array
-	bispectrumSymmetry(curvatureBispectrum,NN)
-	bicoherenceSymmetry(curvatureBicoherence,NN)
+	#bispectrumSymmetry(curvatureBispectrum,NN)
+	#bicoherenceSymmetry(curvatureBicoherence,NN)
 
 	# Compute the curvature third moment function
-    curvatureThirdMomentFunction = np.zeros((NN,NN),dtype=np.float)
-    curvatureThirdMomentFunction =  fft(curvatureBispectrum).real
-    curvatureThirdMomentFunction /= curvatureThirdMomentFunction[0,0]
+    #curvatureThirdMomentFunction = np.zeros((NN,NN),dtype=np.float)
+    #curvatureThirdMomentFunction =  fft(curvatureBispectrum).real
+    #curvatureThirdMomentFunction /= curvatureThirdMomentFunction[0,0]
 
 	# Compute the curvature third cumulant function
-    curvatureThirdCumulantFunction = np.zeros((NN,NN),dtype=np.float)
-    for i in np.arange(0,NN/2+1):
-        for j in np.arange(0,i+1):
-			curvatureThirdCumulantFunction[i,j] = (curvatureStats.moments[2]*curvatureThirdMomentFunction[i,j] \
-				- curvatureStats.moments[0]*curvatureStats.moments[1] * \
-				(curvatureSecondMomentFunction[i] + \
-				 curvatureSecondMomentFunction[j] + \
-				 curvatureSecondMomentFunction[abs(j-i)]) \
-				+ 2.*curvatureStats.moments[0]**3.)/curvatureStats.cumulants[2]
+    #curvatureThirdCumulantFunction = np.zeros((NN,NN),dtype=np.float)
+    #for i in np.arange(0,NN/2+1):
+        #for j in np.arange(0,i+1):
+			#curvatureThirdCumulantFunction[i,j] = (curvatureStats.moments[2]*curvatureThirdMomentFunction[i,j] \
+				#- curvatureStats.moments[0]*curvatureStats.moments[1] * \
+				#(curvatureSecondMomentFunction[i] + \
+				 #curvatureSecondMomentFunction[j] + \
+				 #curvatureSecondMomentFunction[abs(j-i)]) \
+				#+ 2.*curvatureStats.moments[0]**3.)/curvatureStats.cumulants[2]
 
-			curvatureThirdCumulantFunction[j,i] = curvatureThirdCumulantFunction[i,j]
+			#curvatureThirdCumulantFunction[j,i] = curvatureThirdCumulantFunction[i,j]
 
 
     ########################################
@@ -931,12 +958,12 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
         glintSecondMomentFunction[geom] = fft(totalGlintAvgPower[geom]).real
         glintSecondMomentFunction[geom] /= glintSecondMomentFunction[geom][0]
 
-	# Compute the bispectrum estimators
+    # Compute the bispectrum estimators
     glintBispectrum /= float(N_r)
     glintComponentPower /= float(N_r)
     glintSumPower /= float(N_r)
 
-	# Compute the bicoherence
+    # Compute the bicoherence
     glintBicoherence = np.zeros((N_geoms,NN,NN),dtype=np.float)
     for geom in np.arange(N_geoms) :
         for j in np.arange(NN4+1):
@@ -947,18 +974,18 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
                 else:
                     glintBicoherence[geom,i,j] = 0.
 
-	# Fill the rest of the bispectrum and bicoherence array
+    # Fill the rest of the bispectrum and bicoherence array
     for geom in np.arange(N_geoms) :
         bispectrumSymmetry(glintBispectrum[geom],NN)
         bicoherenceSymmetry(glintBicoherence[geom],NN)
 
-	# Compute the glint third moment function
+    # Compute the glint third moment function
     glintThirdMomentFunction = np.zeros((N_geoms,NN,NN),dtype=np.float)
     for geom in np.arange(N_geoms) :
         glintThirdMomentFunction[geom] =  fft(glintBispectrum[geom]).real
         glintThirdMomentFunction[geom] /= glintThirdMomentFunction[geom,0,0]
 
-	# Compute the glint third cumulant function
+    # Compute the glint third cumulant function
     glintThirdCumulantFunction = np.zeros((N_geoms,NN,NN),dtype=np.float)
     for geom in np.arange(N_geoms) :
         for i in np.arange(0,NN/2+1):
@@ -985,89 +1012,82 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
     print '####################################'
 
     print ""
-    print strFormat.format("Python Elevation mean",elevStats.mean)
-    #print strFormat.format("Python Elevation stdev",sqrt(elevStats.variance))
-    print strFormat.format("Python Elevation variance",elevStats.variance)
-    print strFormat.format("Python Elevation skewness",elevStats.skewness)
+    LOG.info(strFormat.format("Elevation first moment",elevStats.moments[0]))
+    LOG.info(strFormat.format("Elevation second moment",elevStats.moments[1]))
+    LOG.info(strFormat.format("Elevation third moment",elevStats.moments[2]))
 
     print ""
-    print strFormat.format("Elevation first moment",elevStats.moments[0])
-    print strFormat.format("Elevation second moment",elevStats.moments[1])
-    print strFormat.format("Elevation third moment",elevStats.moments[2])
+    LOG.info(strFormat.format("Elevation first cumulant",elevStats.cumulants[0]))
+    LOG.info(strFormat.format("Elevation second cumulant",elevStats.cumulants[1]))
+    LOG.info(strFormat.format("Elevation third cumulant",elevStats.cumulants[2]))
 
     print ""
-    print strFormat.format("Elevation first cumulant",elevStats.cumulants[0])
-    print strFormat.format("Elevation second cumulant",elevStats.cumulants[1])
-    print strFormat.format("Elevation third cumulant",elevStats.cumulants[2])
+    LOG.info(strFormat.format("Elevation mean",elevStats.mean))
+    #LOG.info(strFormat.format("Elevation stdev",sqrt(elevStats.variance)))
+    LOG.info(strFormat.format("Elevation variance",elevStats.variance))
+    LOG.info(strFormat.format("Elevation skewness",elevStats.skewness))
 
     print ""
-    print strFormat.format("Elevation mean",elevStats.mean)
-    #print strFormat.format("Elevation stdev",sqrt(elevStats.variance))
-    print strFormat.format("Elevation variance",elevStats.variance)
-    print strFormat.format("Elevation skewness",elevStats.skewness)
+    LOG.info(strFormat.format("Python Elevation mean",elevStats.mean))
+    #LOG.info(strFormat.format("Python Elevation stdev",sqrt(elevStats.variance)))
+    LOG.info(strFormat.format("Python Elevation variance",elevStats.variance))
+    LOG.info(strFormat.format("Python Elevation skewness",elevStats.skewness))
 
     print '\n####################################'
     print '               Slope'
     print '####################################'
 
     print ""
-    print strFormat.format("Python Slope mean",slopeStats.mean)
-    #print strFormat.format("Python Slope stdev",sqrt(slopeStats.variance))
-    print strFormat.format("Python Slope variance",slopeStats.variance)
-    print strFormat.format("Python Slope skewness",slopeStats.skewness)
+    LOG.info(strFormat.format("Slope first moment",slopeStats.moments[0]))
+    LOG.info(strFormat.format("Slope second moment",slopeStats.moments[1]))
+    LOG.info(strFormat.format("Slope third moment",slopeStats.moments[2]))
 
     print ""
-    print strFormat.format("Slope first moment",slopeStats.moments[0])
-    print strFormat.format("Slope second moment",slopeStats.moments[1])
-    print strFormat.format("Slope third moment",slopeStats.moments[2])
+    LOG.info(strFormat.format("Slope first cumulant",slopeStats.cumulants[0]))
+    LOG.info(strFormat.format("Slope second cumulant",slopeStats.cumulants[1]))
+    LOG.info(strFormat.format("Slope third cumulant",slopeStats.cumulants[2]))
 
     print ""
-    print strFormat.format("Slope first cumulant",slopeStats.cumulants[0])
-    print strFormat.format("Slope second cumulant",slopeStats.cumulants[1])
-    print strFormat.format("Slope third cumulant",slopeStats.cumulants[2])
+    LOG.info(strFormat.format("Slope mean",slopeStats.mean))
+    #LOG.info(strFormat.format("Slope stdev",sqrt(slopeStats.variance)))
+    LOG.info(strFormat.format("Slope variance",slopeStats.variance))
+    LOG.info(strFormat.format("Slope skewness",slopeStats.skewness))
 
     print ""
-    print strFormat.format("Slope mean",slopeStats.mean)
-    #print strFormat.format("Slope stdev",sqrt(slopeStats.variance))
-    print strFormat.format("Slope variance",slopeStats.variance)
-    print strFormat.format("Slope skewness",slopeStats.skewness)
+    LOG.info(strFormat.format("Python Slope mean",slopeStats.mean))
+    #LOG.info(strFormat.format("Python Slope stdev",sqrt(slopeStats.variance)))
+    LOG.info(strFormat.format("Python Slope variance",slopeStats.variance))
+    LOG.info(strFormat.format("Python Slope skewness",slopeStats.skewness))
 
-    print '\n####################################'
-    print '              Curvature'
-    print '####################################'
+    #print '\n####################################'
+    #print '              Curvature'
+    #print '####################################'
 
-    print ""
-    print strFormat.format("Python Curvature mean",curvatureStats.mean)
-    #print strFormat.format("Python Curvature stdev",sqrt(curvatureStats.variance))
-    print strFormat.format("Python Curvature variance",curvatureStats.variance)
-    print strFormat.format("Python Curvature skewness",curvatureStats.skewness)
+    #print ""
+    #LOG.info(strFormat.format("Curvature first moment",curvatureStats.moments[0]))
+    #LOG.info(strFormat.format("Curvature second moment",curvatureStats.moments[1]))
+    #LOG.info(strFormat.format("Curvature third moment",curvatureStats.moments[2]))
 
-    print ""
-    print strFormat.format("Curvature first moment",curvatureStats.moments[0])
-    print strFormat.format("Curvature second moment",curvatureStats.moments[1])
-    print strFormat.format("Curvature third moment",curvatureStats.moments[2])
+    #print ""
+    #LOG.info(strFormat.format("Curvature first cumulant",curvatureStats.cumulants[0]))
+    #LOG.info(strFormat.format("Curvature second cumulant",curvatureStats.cumulants[1]))
+    #LOG.info(strFormat.format("Curvature third cumulant",curvatureStats.cumulants[2]))
 
-    print ""
-    print strFormat.format("Curvature first cumulant",curvatureStats.cumulants[0])
-    print strFormat.format("Curvature second cumulant",curvatureStats.cumulants[1])
-    print strFormat.format("Curvature third cumulant",curvatureStats.cumulants[2])
+    #print ""
+    #LOG.info(strFormat.format("Curvature mean",curvatureStats.mean))
+    ##LOG.info(strFormat.format("Curvature stdev",sqrt(curvatureStats.variance)))
+    #LOG.info(strFormat.format("Curvature variance",curvatureStats.variance))
+    #LOG.info(strFormat.format("Curvature skewness",curvatureStats.skewness))
 
-    print ""
-    print strFormat.format("Curvature mean",curvatureStats.mean)
-    #print strFormat.format("Curvature stdev",sqrt(curvatureStats.variance))
-    print strFormat.format("Curvature variance",curvatureStats.variance)
-    print strFormat.format("Curvature skewness",curvatureStats.skewness)
+    #print ""
+    #LOG.info(strFormat.format("Python Curvature mean",curvatureStats.mean))
+    ##LOG.info(strFormat.format("Python Curvature stdev",sqrt(curvatureStats.variance)))
+    #LOG.info(strFormat.format("Python Curvature variance",curvatureStats.variance))
+    #LOG.info(strFormat.format("Python Curvature skewness",curvatureStats.skewness))
 
     print '\n####################################'
     print '              Glint'
     print '####################################'
-
-    print "\nPython Glint mean, variance and skewness ...\n"
-    for geom in np.arange(Geom.N_geoms) :
-        print "\tGeometry %1d:\t\t%10.6e\t%10.6e\t%10.6e" % (geom,\
-            glintStats[geom].mean,\
-            glintStats[geom].variance,\
-            glintStats[geom].skewness)
 
     print "Glint moments ...\n"
     for geom in np.arange(Geom.N_geoms) :
@@ -1082,6 +1102,166 @@ def cumulantFunctionSimulate(N,NN,delta_x,N_r,spectrumType,specExp,nlSwitch):
             glintStats[geom].cumulants[0],\
             glintStats[geom].cumulants[1],\
             glintStats[geom].cumulants[2])
+
+    print "\nPython Glint mean, variance and skewness ...\n"
+    for geom in np.arange(Geom.N_geoms) :
+        print "\tGeometry %1d:\t\t%10.6e\t%10.6e\t%10.6e" % (geom,\
+            glintStats[geom].mean,\
+            glintStats[geom].variance,\
+            glintStats[geom].skewness)
+
+
+    ##############################################
+    ###   Write data to the output HDF5 file   ###
+    ##############################################
+
+    fileName = 'GlintSim_{}_{}_{}_{}_{}'.format(
+                N,
+                NN,
+                int(100.*delta_x),
+                N_runs,
+                spectrumType
+            )
+
+    if (nlSwitch == 1):
+        fileName = '{}_nl.h5'.format(fileName)
+    else:
+        fileName = '{}.h5'.format(fileName)
+
+    fileName = string.replace(fileName,' ','')
+
+    LOG.info("Open output filename: {}".format(fileName))
+
+    f = h5py.File(fileName,'w')
+
+
+    ### Add some attributes to the file
+
+    f.attrs['Author'] = "Geoff Cureton"
+    f.attrs['email'] = "<geoff.cureton@physics.org>"
+    f.attrs['repo:'] = 'https://bitbucket.org/gcureton/cumulant_function_simulate'
+    f.attrs['revision'] = 'undefined'
+    f.attrs['date'] = datetime.strftime(datetime.utcnow(),"%Y-%m-%d %H:%M:%S Z")
+
+    # Add the Geometry group
+
+    grp = f.create_group("Geometry")
+
+    grp['N_geoms'] = Geom.N_geoms
+    grp['N_geoms'].attrs['label'] = 'Number of geometries'
+
+    grp['source_angle'] = Geom.source_angle
+    grp['source_angle'].attrs['unit'] = 'radians'
+    grp['source_angle'].attrs['label'] = 'Solar Zenith Angles'
+
+    grp['detector_angle'] = Geom.detector_angle
+    grp['detector_angle'].attrs['unit'] = 'radians'
+    grp['detector_angle'].attrs['label'] = 'Sensor Zenith Angles'
+ 
+    grp['xi_min'] = Geom.xi_min
+    grp['xi_min'].attrs['unit'] = 'dimensionless'
+    grp['xi_min'].attrs['label'] = 'Minimum Slopes'
+
+    grp['xi_max'] = Geom.xi_max
+    grp['xi_max'].attrs['unit'] = 'dimensionless'
+    grp['xi_max'].attrs['label'] = 'Maximum Slopes'
+
+    grp['xi_0'] = Geom.xi_0
+    grp['xi_0'].attrs['unit'] = 'dimensionless'
+    grp['xi_0'].attrs['label'] = 'Specular Slopes'
+
+    # Add the Scale group
+
+    grp = f.create_group("Scale")
+
+    grp['N'] = Scale.N
+    grp['N'].attrs['label'] = '1D Data Length'
+    grp['N2'] = Scale.N2
+    grp['N2'].attrs['label'] = 'N/2'
+    grp['NN'] = Scale.NN
+    grp['NN'].attrs['label'] = '2D data length'
+    grp['NN2'] = Scale.NN2
+    grp['NN2'].attrs['label'] = 'NN/2'
+    grp['NN4'] = Scale.NN4
+    grp['NN4'].attrs['label'] = 'NN/4'
+
+    grp['delta_x'] = Scale.delta_x
+    grp['delta_x'].attrs['label'] = 'Spatial Increment'
+    grp['delta_x'].attrs['units'] = 'meters'
+    grp['x_max'] = Scale.x_max
+    grp['x_max'].attrs['label'] = '1D Spatial Maximum'
+    grp['x_max'].attrs['units'] = 'meters'
+    grp['x'] = Scale.x
+    grp['x'].attrs['label'] = '1D spatial length scale'
+    grp['x'].attrs['units'] = 'meters'
+    grp['k_max'] = Scale.k_max
+    grp['k_max'].attrs['label'] = '1D wavenumber maximum'
+    grp['k_max'].attrs['units'] = 'meters^{-1}'
+    grp['delta_k'] = Scale.delta_k
+    grp['delta_k'].attrs['label'] = 'Wavenumber increment'
+    grp['delta_k'].attrs['units'] = 'meters^{-1}'
+    grp['k_N'] = Scale.k_N
+    grp['k_N'].attrs['label'] = 'Nyquist wavenumber'
+    grp['k_N'].attrs['units'] = 'meters^{-1}'
+    grp['k'] = Scale.k
+    grp['k'].attrs['label'] = '1D wavenumber scale'
+    grp['k'].attrs['units'] = 'meters^{-1}'
+
+    # Add the Elevation group
+
+    grp = f.create_group("/Data/Elevation")
+
+    grp['elevation_moments'] = elevStats.moments
+    grp['elevation_moments'].attrs['label'] = 'Elevation Moments'
+
+    grp['elevation_cumulants'] = elevStats.cumulants
+    grp['elevation_cumulants'].attrs['label'] = 'Elevation cumulants'
+
+    grp['elevation_stats'] = [elevStats.mean,elevStats.variance,elevStats.skewness]
+    grp['elevation_stats'].attrs['label'] = 'Elevation Point Statistics (numpy)'
+
+    # Add the Slope group
+
+    grp = f.create_group("/Data/Slope")
+
+    grp['slope_moments'] = slopeStats.moments
+    grp['slope_moments'].attrs['label'] = 'Slope Moments'
+
+    grp['slope_cumulants'] = slopeStats.cumulants
+    grp['slope_cumulants'].attrs['label'] = 'Slope cumulants'
+
+    grp['slope_stats'] = [slopeStats.mean,slopeStats.variance,slopeStats.skewness]
+    grp['slope_stats'].attrs['label'] = 'Slope Point Statistics (numpy)'
+
+    # Add the Glint group
+
+    grp = f.create_group("/Data/Glint")
+
+    grp['glint_moments'] = np.squeeze([np.vstack((glintStats[geom].moments)) 
+        for geom in np.arange(Geom.N_geoms)])
+    grp['glint_moments'].attrs['label'] = 'Glint Moments'
+
+    grp['glint_cumulants'] = np.squeeze([np.vstack((glintStats[geom].cumulants)) 
+        for geom in np.arange(Geom.N_geoms)])
+    grp['glint_cumulants'].attrs['label'] = 'Glint cumulants'
+
+    grp['glint_stats'] = np.squeeze([np.vstack((
+        [glintStats[geom].mean,glintStats[geom].variance,glintStats[geom].skewness]
+        )) 
+        for geom in np.arange(Geom.N_geoms)])
+    grp['glint_stats'].attrs['label'] = 'Glint Point Statistics (numpy)'
+
+
+
+    # Close the output file
+
+    LOG.info("Closing HDF5 file")
+
+    f.close()
+
+
+
+
 
 def _argparse():
 
@@ -1114,7 +1294,8 @@ def _argparse():
                       dest="N" ,
                       default=defaults['N'],
                       type=int,
-                      help="Number of points of the glint dataset. Must be an integer power of 2. [default: {}]".format(defaults['N']),
+                      help='''Number of points of the glint dataset. Must be an 
+                      integer power of 2. [default: {}]'''.format(defaults['N']),
                       metavar="N")
 
     parser.add_argument('-N','--num2Dpoints',
@@ -1122,7 +1303,8 @@ def _argparse():
                       dest="NN" ,
                       default=defaults['NN'],
                       type=int,
-                      help="Number of points of the bispectrum array side. Must be an integer power of 2. [default: {}]".format(defaults['NN']),
+                      help='''Number of points of the bispectrum array side. 
+                      Must be an integer power of 2. [default: {}]'''.format(defaults['NN']),
                       metavar="NN")
 
     parser.add_argument('-d','--deltax',
@@ -1164,14 +1346,16 @@ def _argparse():
                       dest="outputFile",
                       default=defaults['outputFile'],
                       type=str,
-                      help="The full path of the output HDF5 file. [default: '{}']".format(defaults['outputFile']),
+                      help='''The full path of the output HDF5 file. 
+                      [default: '{}']'''.format(defaults['outputFile']),
                       metavar="OUTFILE")
 
     parser.add_argument("-v", "--verbose",
                       dest='verbosity',
                       action="count", 
                       default=0,
-                      help='each occurrence increases verbosity 1 level from ERROR: -v=WARNING -vv=INFO -vvv=DEBUG')
+                      help='''each occurrence increases verbosity 1 level 
+                      from ERROR: -v=WARNING -vv=INFO -vvv=DEBUG''')
 
     args = parser.parse_args()
 
@@ -1198,7 +1382,9 @@ def _argparse():
     # Set up the logging
     #console_logFormat = '%(asctime)s : %(name)-12s: %(levelname)-8s %(message)s'
     #console_logFormat = '%(levelname)s:%(name)s:%(msg)s') # [%(filename)s:%(lineno)d]'
-    console_logFormat = '%(asctime)s : (%(levelname)s):%(filename)s:%(funcName)s:%(lineno)d:  %(message)s'
+
+    console_logFormat = '%(asctime)s : %(funcName)s:%(lineno)d:  %(message)s'
+    #console_logFormat = '%(asctime)s : (%(levelname)s):%(filename)s:%(funcName)s:%(lineno)d:  %(message)s'
     dateFormat = '%Y-%m-%d %H:%M:%S'
     levels = [logging.ERROR, logging.WARN, logging.INFO, logging.DEBUG]
     logging.basicConfig(level = levels[args.verbosity], 

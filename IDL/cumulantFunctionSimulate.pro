@@ -178,8 +178,10 @@ PRO cumulantFunctionSimulate,N,NN,delta_x,N_r,spectrumType,specExp,powWindType,b
 	PRINT,NLCOUPLING.bound
 
 	totalElevPower = POWER.primaryPower + POWER.nlPower
-	PRINT,"Elevation stdev from power vector:    ",SQRT(TOTAL(totalElevPower)*delta_k)," meters",FORMAT='(/A,F10.6,A)'
-	PRINT,"Elevation variance from power vector: ",TOTAL(totalElevPower)*delta_k," meters^{2}",FORMAT='(A,F10.6,A)'
+	PRINT,"Elevation stdev from power vector:    ",$
+		SQRT(TOTAL(totalElevPower)*delta_k)," meters",FORMAT='(/A,F10.6,A)'
+	PRINT,"Elevation variance from power vector: ",$
+		TOTAL(totalElevPower)*delta_k," meters^{2}",FORMAT='(A,F10.6,A)'
 
 	totalSlopePower = DBLARR(N)
 	totalSlopePower = k*k*totalElevPower
@@ -188,8 +190,10 @@ PRO cumulantFunctionSimulate,N,NN,delta_x,N_r,spectrumType,specExp,powWindType,b
 	nlSlopePower = DBLARR(N)
 	nlSlopePower = k*k*POWER.nlPower
 
-	PRINT,"Slope stdev from power vector: ",SQRT(TOTAL(totalSlopePower)*delta_k),FORMAT='(A,F10.6)'
-	PRINT,"Slope variance from power vector: ",TOTAL(totalSlopePower)*delta_k,FORMAT='(A,F10.6/)'
+	PRINT,"Slope stdev from power vector: ",$
+		SQRT(TOTAL(totalSlopePower)*delta_k),FORMAT='(A,F10.6)'
+	PRINT,"Slope variance from power vector: ",$
+		TOTAL(totalSlopePower)*delta_k,FORMAT='(A,F10.6/)'
 
 	PRINT,"Total elevation power at the bound wavenumbers...",FORMAT='(/A)'
 	PRINT,totalElevPower[NLCOUPLING.bound]
@@ -218,8 +222,10 @@ PRO cumulantFunctionSimulate,N,NN,delta_x,N_r,spectrumType,specExp,powWindType,b
 	nlElevAmplitude = SQRT(0.5D*POWER.nlPower*delta_k)
 	nlElevAmplitude[N/2L+1L:N-1L] = REVERSE(nlElevAmplitude[1L:N/2L-1L])
 
-	PRINT,"Elevation stdev from amplitude vector:    ",SQRT(TOTAL(totalElevAmplitude^2.D)),FORMAT='(/A,F10.6)'
-	PRINT,"Elevation variance from amplitude vector: ",TOTAL(totalElevAmplitude^2.D),FORMAT='(A,F10.6/)'
+	PRINT,"Elevation stdev from amplitude vector:    ",$
+		SQRT(TOTAL(totalElevAmplitude^2.D)),FORMAT='(/A,F10.6)'
+	PRINT,"Elevation variance from amplitude vector: ",$
+		TOTAL(totalElevAmplitude^2.D),FORMAT='(A,F10.6/)'
 
 	totalElevAvgPower = DBLARR(N)
 	primaryElevAvgPower = DBLARR(N)
@@ -247,8 +253,10 @@ PRO cumulantFunctionSimulate,N,NN,delta_x,N_r,spectrumType,specExp,powWindType,b
 	nlSlopeSpectrum = DCOMPLEXARR(N)
 	nlSlopeSurface = DCOMPLEXARR(N)
 
-	PRINT,"Slope stdev from amplitude vector: ",SQRT(TOTAL(totalSlopeAmplitude^2.D)),FORMAT='(A,F10.6)'
-	PRINT,"Slope variance from amplitude vector: ",TOTAL(totalSlopeAmplitude^2.D),FORMAT='(A,F10.6/)'
+	PRINT,"Slope stdev from amplitude vector: ",$
+		SQRT(TOTAL(totalSlopeAmplitude^2.D)),FORMAT='(A,F10.6)'
+	PRINT,"Slope variance from amplitude vector: ",$
+		TOTAL(totalSlopeAmplitude^2.D),FORMAT='(A,F10.6/)'
 
 	totalSlopeAvgPower = DBLARR(N)
 	primarySlopeAvgPower = DBLARR(N)

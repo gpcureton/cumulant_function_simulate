@@ -175,6 +175,12 @@ def biCovarianceSymmetry(biCovariance,NN):
                 sys.exit(0)
 
 
+def plot_second_order_func(x,y,**plot_options) :
+    """
+        Plot a single instance of the elevation, slope, curvature and glint, for
+        comparison purposes.
+    """
+
 def plotInstance() :
     """
         Plot a single instance of the elevation, slope, curvature and glint, for
