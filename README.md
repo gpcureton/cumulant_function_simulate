@@ -15,7 +15,7 @@ functions are computed. The results are written to a HDF5 file.
 
 ## Usage:
 
-```[bash]
+```
 usage: cumulantFunctionSimulate.py [-h] [-n N] [-N NN] [-d DELTA_X]
                                    [-r NUMREALS] [-S SPECTRUMTYPE] [-l]
                                    [-o OUTFILE] [-v]
