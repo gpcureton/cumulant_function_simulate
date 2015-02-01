@@ -13,7 +13,7 @@ functions are computed. The results are written to a HDF5 file.
 * numpy
 * scipy
 
-##Usage:
+## Usage:
 
 ```[bash]
 usage: cumulantFunctionSimulate.py [-h] [-n N] [-N NN] [-d DELTA_X]
